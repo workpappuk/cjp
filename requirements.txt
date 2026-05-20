@@ -1,0 +1,7 @@
+anyio==4.13.0
+fastapi==0.136.1
+Jinja2==3.1.6
+python-multipart==0.0.29
+sqlmodel==0.0.38
+starlette==1.0.0
+uvicorn==0.47.0

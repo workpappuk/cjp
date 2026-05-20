@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Todo App</title>
+
+  <script src="https://unpkg.com/htmx.org"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-10">
+
+  <div class="max-w-xl mx-auto bg-white p-6 rounded shadow">
+
+    <h1 class="text-3xl font-bold mb-6">
+      HTMX Todo App
+    </h1>
+
+    <form
+      hx-post="/todos"
+      hx-target="#todo-list"
+      hx-swap="innerHTML"
+      class="flex gap-2 mb-6"
+    >
+      <input
+        type="text"
+        name="title"
+        placeholder="Enter todo"
+        class="border p-2 flex-1 rounded"
+      />
+
+      <button class="bg-blue-500 text-white px-4 rounded">
+        Add
+      </button>
+    </form>
+
+    <div id="todo-list">
+      {% include 'todo_list.html' %}
+    </div>
+
+  </div>
+
+</body>
+</html>
