@@ -3,7 +3,7 @@
   <div class="flex items-center gap-3 flex-1">
 
     <button
-      hx-post="/todos/{{ todo.id }}/toggle"
+      hx-post="/todos/{{ todo.id }}/toggle?q={{ q | urlencode }}&page={{ current_page }}"
       hx-target="#todo-list"
       hx-swap="innerHTML"
       class="text-xl"
@@ -17,7 +17,7 @@
 
     {% if edit %}
       <form
-        hx-post="/todos/{{ todo.id }}/edit"
+        hx-post="/todos/{{ todo.id }}/edit?q={{ q | urlencode }}&page={{ current_page }}"
         hx-target="#todo-{{ todo.id }}"
         hx-swap="outerHTML"
         class="flex flex-1 gap-2"
@@ -33,7 +33,7 @@
         </button>
         <button
           type="button"
-          hx-get="/todos/{{ todo.id }}"
+          hx-get="/todos/{{ todo.id }}?q={{ q | urlencode }}&page={{ current_page }}"
           hx-target="#todo-{{ todo.id }}"
           hx-swap="outerHTML"
           class="bg-gray-200 px-4 rounded"
@@ -52,7 +52,7 @@
   {% if not edit %}
     <div class="flex gap-2">
       <button
-        hx-get="/todos/{{ todo.id }}/edit"
+        hx-get="/todos/{{ todo.id }}/edit?q={{ q | urlencode }}&page={{ current_page }}"
         hx-target="#todo-{{ todo.id }}"
         hx-swap="outerHTML"
         class="text-blue-500"
@@ -61,7 +61,7 @@
       </button>
 
       <button
-        hx-post="/todos/{{ todo.id }}/delete"
+        hx-post="/todos/{{ todo.id }}/delete?q={{ q | urlencode }}&page={{ current_page }}"
         hx-target="#todo-list"
         hx-swap="innerHTML"
         class="text-red-500"
