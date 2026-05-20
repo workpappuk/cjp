@@ -18,8 +18,8 @@
     {% if edit %}
       <form
         hx-post="/todos/{{ todo.id }}/edit?q={{ q | urlencode }}&page={{ current_page }}"
-        hx-target="#todo-{{ todo.id }}"
-        hx-swap="outerHTML"
+        hx-target="#todo-list"
+        hx-swap="innerHTML"
         class="flex flex-1 gap-2"
       >
         <input
@@ -28,6 +28,8 @@
           value="{{ todo.title }}"
           class="border p-2 rounded flex-1"
         />
+        <input type="hidden" name="q" value="{{ q | default('') }}" />
+        <input type="hidden" name="page" value="{{ current_page }}" />
         <button class="bg-green-500 text-white px-4 rounded">
           Save
         </button>
