@@ -1,0 +1,74 @@
+<li id="todo-{{ todo.id }}" class="flex items-center justify-between border p-3 rounded">
+
+  <div class="flex items-center gap-3 flex-1">
+
+    <button
+      hx-post="/todos/{{ todo.id }}/toggle"
+      hx-target="#todo-list"
+      hx-swap="innerHTML"
+      class="text-xl"
+    >
+      {% if todo.completed %}
+        ✅
+      {% else %}
+        ⬜
+      {% endif %}
+    </button>
+
+    {% if edit %}
+      <form
+        hx-post="/todos/{{ todo.id }}/edit"
+        hx-target="#todo-{{ todo.id }}"
+        hx-swap="outerHTML"
+        class="flex flex-1 gap-2"
+      >
+        <input
+          type="text"
+          name="title"
+          value="{{ todo.title }}"
+          class="border p-2 rounded flex-1"
+        />
+        <button class="bg-green-500 text-white px-4 rounded">
+          Save
+        </button>
+        <button
+          type="button"
+          hx-get="/todos/{{ todo.id }}"
+          hx-target="#todo-{{ todo.id }}"
+          hx-swap="outerHTML"
+          class="bg-gray-200 px-4 rounded"
+        >
+          Cancel
+        </button>
+      </form>
+    {% else %}
+      <span class="flex-1 {% if todo.completed %}line-through text-gray-400{% endif %}">
+        {{ todo.title }}
+      </span>
+    {% endif %}
+
+  </div>
+
+  {% if not edit %}
+    <div class="flex gap-2">
+      <button
+        hx-get="/todos/{{ todo.id }}/edit"
+        hx-target="#todo-{{ todo.id }}"
+        hx-swap="outerHTML"
+        class="text-blue-500"
+      >
+        Edit
+      </button>
+
+      <button
+        hx-post="/todos/{{ todo.id }}/delete"
+        hx-target="#todo-list"
+        hx-swap="innerHTML"
+        class="text-red-500"
+      >
+        Delete
+      </button>
+    </div>
+  {% endif %}
+
+</li>
