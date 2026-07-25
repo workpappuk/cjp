@@ -1,17 +1,11 @@
 "use client";
 
 import type { ChangeEvent, FormEvent } from "react";
-import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { Button, Card, CardBody, Chip, Input, Typography } from "@/types/mtw";
-import {
-  HiArrowTopRightOnSquare,
-  HiCheckCircle,
-  HiFolderPlus,
-  HiPencilSquare,
-  HiUserPlus,
-} from "react-icons/hi2";
 import { useTheme } from "@/app/_context/theme-context";
 import AppNavbar from "@/app/_components/AppNavbar";
 import PostComposer from "@/app/_components/PostComposer";
@@ -28,9 +22,6 @@ const SEED_COMMUNITY_COUNT = 500;
 const SEED_USER_POST_COUNT = 500;
 const SEED_POSTS_PER_COMMUNITY = 1000;
 const SYNTHETIC_RENDER_LIMIT = 220;
-const COMMUNITY_PAGE_SIZE = 100;
-const INITIAL_FEED_VISIBLE = 40;
-const FEED_LOAD_STEP = 40;
 const DISCOVER_COMMUNITIES = [
   "technology",
   "design",
@@ -53,6 +44,56 @@ type PostItem = {
   synthetic?: boolean;
 };
 
+function IconArrowTopRightOnSquare({ className = "" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className} aria-hidden="true">
+      <path d="M14 5h5v5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M10 14 19 5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M5 7a2 2 0 0 1 2-2h3" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M19 14v3a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-3" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function IconCheckCircle({ className = "" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className} aria-hidden="true">
+      <circle cx="12" cy="12" r="9" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="m8.5 12 2.5 2.5 4.5-5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function IconFolderPlus({ className = "" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className} aria-hidden="true">
+      <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M12 10v6" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M9 13h6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function IconPencilSquare({ className = "" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className} aria-hidden="true">
+      <path d="M4 20h4l9.5-9.5a2.1 2.1 0 0 0-3-3L5 17v3Z" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="m13.5 6.5 3 3" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function IconUserPlus({ className = "" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className} aria-hidden="true">
+      <circle cx="9" cy="9" r="3" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M3.5 19a6 6 0 0 1 11 0" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M17 8v6" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M14 11h6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 function readJSONFromStorage<T>(key: string, fallbackValue: T): T {
   const raw = window.localStorage.getItem(key);
   if (!raw) return fallbackValue;
@@ -69,6 +110,43 @@ function writeJSONToStorage(key: string, value: unknown): void {
   window.localStorage.setItem(key, JSON.stringify(value));
 }
 
+function buildSeedData() {
+  const seededCommunities = Array.from(
+    { length: SEED_COMMUNITY_COUNT },
+    (_, index) => `community-${String(index + 1).padStart(3, "0")}`,
+  );
+
+  const seededPosts = Array.from(
+    { length: SEED_USER_POST_COUNT },
+    (_, index) => {
+      const community = seededCommunities[index % seededCommunities.length];
+      return {
+        id: Date.now() + index,
+        title: `Seeded Post ${index + 1}`,
+        content: `This seeded post belongs to ${community} and helps simulate a regular consumer feed view.`,
+        communities: [community],
+        createdAt: new Date(
+          Date.now() - index * 60 * 1000,
+        ).toLocaleString(),
+      };
+    },
+  );
+
+  const seededCommunityPostCounts = seededCommunities.reduce<Record<string, number>>(
+    (accumulator, community) => {
+      accumulator[community] = SEED_POSTS_PER_COMMUNITY;
+      return accumulator;
+    },
+    {},
+  );
+
+  return {
+    seededCommunities,
+    seededPosts,
+    seededCommunityPostCounts,
+  };
+}
+
 export default function HomePage() {
   const router = useRouter();
   const { theme } = useTheme();
@@ -80,15 +158,13 @@ export default function HomePage() {
   const [joinedCommunities, setJoinedCommunities] = useState<string[]>([]);
   const [communityPostCounts, setCommunityPostCounts] = useState<Record<string, number>>({});
   const [communitySearch, setCommunitySearch] = useState("");
-  const [discoverVisibleCount, setDiscoverVisibleCount] = useState(
-    COMMUNITY_PAGE_SIZE,
-  );
-  const [feedVisibleCount, setFeedVisibleCount] = useState(INITIAL_FEED_VISIBLE);
   const [isLeftSidebarOpen, setIsLeftSidebarOpen] = useState(true);
   const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(true);
   const [isMobileLeftModalOpen, setIsMobileLeftModalOpen] = useState(false);
   const [isMobileRightModalOpen, setIsMobileRightModalOpen] = useState(false);
   const [activeComposer, setActiveComposer] = useState<"post" | "community">("post");
+  const discoverListRef = useRef<HTMLDivElement | null>(null);
+  const feedListRef = useRef<HTMLDivElement | null>(null);
 
   const buttonColors = {
     orange: "orange",
@@ -178,10 +254,6 @@ export default function HomePage() {
     );
   }, [filteredPosts, syntheticFeedSamples]);
 
-  const visibleFeedPosts = useMemo(() => {
-    return displayFeedPosts.slice(0, feedVisibleCount);
-  }, [displayFeedPosts, feedVisibleCount]);
-
   const filteredPostCountLabel = useMemo(() => {
     const totalCount = syntheticFeedTotal + filteredPosts.length;
     return `${totalCount.toLocaleString()} posts in feed`;
@@ -201,96 +273,137 @@ export default function HomePage() {
     );
   }, [availableCommunities, normalizedCommunitySearch]);
 
-  const visibleDiscoverCommunities = useMemo(() => {
-    return filteredAvailableCommunities.slice(0, discoverVisibleCount);
-  }, [filteredAvailableCommunities, discoverVisibleCount]);
+  const discoverVirtualizer = useVirtualizer({
+    count: filteredAvailableCommunities.length,
+    getScrollElement: () => discoverListRef.current,
+    estimateSize: () => 56,
+    overscan: 10,
+    getItemKey: (index) => filteredAvailableCommunities[index] ?? `community-${index}`,
+  });
+
+  const feedVirtualizer = useVirtualizer({
+    count: displayFeedPosts.length,
+    getScrollElement: () => feedListRef.current,
+    estimateSize: () => 320,
+    overscan: 10,
+    getItemKey: (index) => String(displayFeedPosts[index]?.id ?? `post-${index}`),
+  });
 
   useEffect(() => {
-    setDiscoverVisibleCount(COMMUNITY_PAGE_SIZE);
-  }, [normalizedCommunitySearch]);
+    discoverVirtualizer.scrollToOffset(0);
+  }, [normalizedCommunitySearch, discoverVirtualizer]);
 
   useEffect(() => {
-    setFeedVisibleCount(INITIAL_FEED_VISIBLE);
-  }, [joinedCommunities.length]);
+    feedVirtualizer.scrollToOffset(0);
+  }, [joinedCommunities.length, feedVirtualizer]);
 
   useEffect(() => {
+    const shouldLockBodyScroll = isMobileLeftModalOpen || isMobileRightModalOpen;
+    if (!shouldLockBodyScroll) {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isMobileLeftModalOpen, isMobileRightModalOpen]);
+
+  useEffect(() => {
+    let cancelled = false;
+    let idleId: number | null = null;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
     if (window.localStorage.getItem(AUTH_KEY) !== "google") {
       router.replace("/");
       return;
     }
 
-    if (window.localStorage.getItem(SEED_VERSION_KEY) !== SEED_VERSION) {
-      const seededCommunities = Array.from(
-        { length: SEED_COMMUNITY_COUNT },
-        (_, index) => `community-${String(index + 1).padStart(3, "0")}`,
-      );
-
-      const seededPosts = Array.from(
-        { length: SEED_USER_POST_COUNT },
-        (_, index) => {
-          const community = seededCommunities[index % seededCommunities.length];
-          return {
-            id: Date.now() + index,
-            title: `Seeded Post ${index + 1}`,
-            content: `This seeded post belongs to ${community} and helps simulate a regular consumer feed view.`,
-            communities: [community],
-            createdAt: new Date(
-              Date.now() - index * 60 * 1000,
-            ).toLocaleString(),
-          };
-        },
-      );
-
-      const seededCommunityPostCounts = seededCommunities.reduce<Record<string, number>>(
-        (accumulator, community) => {
-          accumulator[community] = SEED_POSTS_PER_COMMUNITY;
-          return accumulator;
-        },
+    const hydrateFromStorage = () => {
+      const parsedPosts = readJSONFromStorage(POSTS_KEY, []);
+      const parsedCommunities = readJSONFromStorage(COMMUNITIES_KEY, []);
+      const parsedJoined = readJSONFromStorage(JOINED_COMMUNITIES_KEY, []);
+      const parsedCommunityPostCounts = readJSONFromStorage<Record<string, number>>(
+        COMMUNITY_POST_COUNTS_KEY,
         {},
       );
 
-      writeJSONToStorage(COMMUNITIES_KEY, seededCommunities);
-      writeJSONToStorage(JOINED_COMMUNITIES_KEY, seededCommunities);
-      writeJSONToStorage(POSTS_KEY, seededPosts);
-      writeJSONToStorage(COMMUNITY_POST_COUNTS_KEY, seededCommunityPostCounts);
-      window.localStorage.setItem(SEED_VERSION_KEY, SEED_VERSION);
-    }
+      setPosts(Array.isArray(parsedPosts) ? parsedPosts : []);
+      setCommunities(Array.isArray(parsedCommunities) ? parsedCommunities : []);
+      setJoinedCommunities(Array.isArray(parsedJoined) ? parsedJoined : []);
+      setCommunityPostCounts(parsedCommunityPostCounts);
+    };
 
-    const parsedPosts = readJSONFromStorage(POSTS_KEY, []);
-    const parsedCommunities = readJSONFromStorage(COMMUNITIES_KEY, []);
-    const parsedJoined = readJSONFromStorage(JOINED_COMMUNITIES_KEY, []);
-    const parsedCommunityPostCounts = readJSONFromStorage<Record<string, number>>(
-      COMMUNITY_POST_COUNTS_KEY,
-      {},
-    );
-
-    setPosts(Array.isArray(parsedPosts) ? parsedPosts : []);
-    setCommunities(Array.isArray(parsedCommunities) ? parsedCommunities : []);
-    setJoinedCommunities(Array.isArray(parsedJoined) ? parsedJoined : []);
-    setCommunityPostCounts(parsedCommunityPostCounts);
-
-    const savedUiPrefs = window.localStorage.getItem(HOME_UI_PREFS_KEY);
-    if (savedUiPrefs) {
-      try {
-        const parsedUiPrefs = JSON.parse(savedUiPrefs);
-        if (typeof parsedUiPrefs.left === "boolean") {
-          setIsLeftSidebarOpen(parsedUiPrefs.left);
+    const hydrateUiPrefs = () => {
+      const savedUiPrefs = window.localStorage.getItem(HOME_UI_PREFS_KEY);
+      if (savedUiPrefs) {
+        try {
+          const parsedUiPrefs = JSON.parse(savedUiPrefs);
+          if (typeof parsedUiPrefs.left === "boolean") {
+            setIsLeftSidebarOpen(parsedUiPrefs.left);
+          }
+          if (typeof parsedUiPrefs.right === "boolean") {
+            setIsRightSidebarOpen(parsedUiPrefs.right);
+          }
+          if (
+            parsedUiPrefs.activeComposer === "post" ||
+            parsedUiPrefs.activeComposer === "community"
+          ) {
+            setActiveComposer(parsedUiPrefs.activeComposer);
+          }
+        } catch {
+          setIsLeftSidebarOpen(true);
+          setIsRightSidebarOpen(true);
+          setActiveComposer("post");
         }
-        if (typeof parsedUiPrefs.right === "boolean") {
-          setIsRightSidebarOpen(parsedUiPrefs.right);
-        }
-        if (
-          parsedUiPrefs.activeComposer === "post" ||
-          parsedUiPrefs.activeComposer === "community"
-        ) {
-          setActiveComposer(parsedUiPrefs.activeComposer);
-        }
-      } catch {
-        setIsLeftSidebarOpen(true);
-        setIsRightSidebarOpen(true);
-        setActiveComposer("post");
       }
+    };
+
+    hydrateUiPrefs();
+
+    if (window.localStorage.getItem(SEED_VERSION_KEY) !== SEED_VERSION) {
+      const seedAndHydrate = () => {
+        if (cancelled) return;
+
+        const {
+          seededCommunities,
+          seededPosts,
+          seededCommunityPostCounts,
+        } = buildSeedData();
+
+        writeJSONToStorage(COMMUNITIES_KEY, seededCommunities);
+        writeJSONToStorage(JOINED_COMMUNITIES_KEY, seededCommunities);
+        writeJSONToStorage(POSTS_KEY, seededPosts);
+        writeJSONToStorage(COMMUNITY_POST_COUNTS_KEY, seededCommunityPostCounts);
+        window.localStorage.setItem(SEED_VERSION_KEY, SEED_VERSION);
+
+        if (cancelled) return;
+        setPosts(seededPosts);
+        setCommunities(seededCommunities);
+        setJoinedCommunities(seededCommunities);
+        setCommunityPostCounts(seededCommunityPostCounts);
+      };
+
+      if (typeof window.requestIdleCallback === "function") {
+        idleId = window.requestIdleCallback(seedAndHydrate, { timeout: 350 });
+      } else {
+        timeoutId = setTimeout(seedAndHydrate, 0);
+      }
+    } else {
+      hydrateFromStorage();
     }
+
+    return () => {
+      cancelled = true;
+      if (idleId !== null && typeof window.cancelIdleCallback === "function") {
+        window.cancelIdleCallback(idleId);
+      }
+      if (timeoutId !== null) {
+        clearTimeout(timeoutId);
+      }
+    };
   }, [router]);
 
   useEffect(() => {
@@ -336,16 +449,14 @@ export default function HomePage() {
 
   const handleToggleJoinCommunity = (name: string) => {
     const isJoined = joinedCommunitiesSet.has(name);
-    const nextJoined = isJoined
-      ? joinedCommunities.filter((item) => item !== name)
-      : [...joinedCommunities, name];
-
-    setJoinedCommunities(nextJoined);
-    writeJSONToStorage(JOINED_COMMUNITIES_KEY, nextJoined);
-
     if (isJoined) {
       return;
     }
+
+    const nextJoined = [...joinedCommunities, name];
+
+    setJoinedCommunities(nextJoined);
+    writeJSONToStorage(JOINED_COMMUNITIES_KEY, nextJoined);
   };
 
   const handleCreatePost = (event: FormEvent<HTMLFormElement>) => {
@@ -395,7 +506,7 @@ export default function HomePage() {
       <Card className="border border-slate-200 shadow-none">
         <CardBody className="space-y-4 p-5">
           <Typography variant="h5" className="inline-flex items-center gap-2 text-blue-gray-900">
-            <HiUserPlus aria-hidden="true" />
+            <IconUserPlus className="h-5 w-5" />
             Join Communities
           </Typography>
 
@@ -403,53 +514,61 @@ export default function HomePage() {
             Join one or more communities. Unlimited communities supported.
           </Typography>
 
-          <div className="grid gap-2">
-            {visibleDiscoverCommunities.map((item) => {
-              const isJoined = joinedCommunitiesSet.has(item);
-
-              return (
-                <div
-                  key={item}
-                  className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2"
-                >
-                  <span className="text-sm text-slate-700">{item}</span>
-                  <div className="flex items-center gap-2">
-                    <Link
-                      href={`/pages/community/${encodeURIComponent(item)}`}
-                      className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-blue-gray-700 hover:bg-slate-100"
-                    >
-                      Open
-                      <HiArrowTopRightOnSquare aria-hidden="true" />
-                    </Link>
-                    <Button
-                      size="sm"
-                      color={isJoined ? "blue-gray" : buttonColor}
-                      variant={isJoined ? "outlined" : "filled"}
-                      onClick={() => handleToggleJoinCommunity(item)}
-                      className="rounded-lg"
-                    >
-                      {isJoined ? "Joined" : "Join"}
-                    </Button>
-                  </div>
-                </div>
-              );
-            })}
-            {discoverVisibleCount < filteredAvailableCommunities.length ? (
-              <Button
-                size="sm"
-                variant="outlined"
-                color={buttonColor}
-                className="rounded-lg"
-                onClick={() =>
-                  setDiscoverVisibleCount(
-                    (prev) => prev + COMMUNITY_PAGE_SIZE,
-                  )
-                }
+          {filteredAvailableCommunities.length === 0 ? (
+            <Typography variant="small" className="text-slate-500">
+              No communities match your search.
+            </Typography>
+          ) : (
+            <div
+              ref={discoverListRef}
+              className="max-h-96 overflow-y-auto overscroll-contain pr-1"
+              style={{ WebkitOverflowScrolling: "touch" }}
+            >
+              <div
+                className="relative"
+                style={{ height: `${discoverVirtualizer.getTotalSize()}px` }}
               >
-                Load more
-              </Button>
-            ) : null}
-          </div>
+                {discoverVirtualizer.getVirtualItems().map((virtualItem) => {
+                  const item = filteredAvailableCommunities[virtualItem.index];
+                  if (!item) return null;
+                  const isJoined = joinedCommunitiesSet.has(item);
+
+                  return (
+                    <div
+                      key={item}
+                      data-index={virtualItem.index}
+                      ref={discoverVirtualizer.measureElement}
+                      className="absolute left-0 top-0 w-full pb-2"
+                      style={{ transform: `translateY(${virtualItem.start}px)` }}
+                    >
+                      <div className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2">
+                        <span className="text-sm text-slate-700">{item}</span>
+                        <div className="flex items-center gap-2">
+                          <Link
+                            href={`/pages/community/${encodeURIComponent(item)}`}
+                            className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-blue-gray-700 hover:bg-slate-100"
+                          >
+                            Open
+                            <IconArrowTopRightOnSquare className="h-3.5 w-3.5" />
+                          </Link>
+                          <Button
+                            size="sm"
+                            color={isJoined ? "blue-gray" : buttonColor}
+                            variant={isJoined ? "outlined" : "filled"}
+                            onClick={() => handleToggleJoinCommunity(item)}
+                            disabled={isJoined}
+                            className="rounded-lg"
+                          >
+                            {isJoined ? "Joined" : "Join"}
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </CardBody>
       </Card>
     </>
@@ -488,7 +607,7 @@ export default function HomePage() {
         <Card className="border border-slate-200 shadow-none">
           <CardBody className="space-y-4 p-5">
             <Typography variant="h5" className="inline-flex items-center gap-2 text-blue-gray-900">
-              <HiFolderPlus aria-hidden="true" />
+              <IconFolderPlus className="h-5 w-5" />
               Create Community
             </Typography>
 
@@ -679,7 +798,7 @@ export default function HomePage() {
                     <Card className="border border-dashed border-slate-300 shadow-none">
                       <CardBody className="space-y-3">
                         <Typography variant="h6" className="inline-flex items-center gap-2 text-blue-gray-900">
-                          <HiPencilSquare aria-hidden="true" />
+                          <IconPencilSquare className="h-5 w-5" />
                           No posts in this feed
                         </Typography>
                         <Typography className="text-slate-600">
@@ -688,87 +807,95 @@ export default function HomePage() {
                       </CardBody>
                     </Card>
                   ) : (
-                    visibleFeedPosts.map((post) => (
-                      <Card key={post.id} className="border border-slate-200 shadow-none">
-                        <CardBody className="space-y-4">
-                          <div className="flex items-start justify-between gap-3">
-                            <Typography variant="h6" className="text-blue-gray-900">
-                              {post.title}
-                            </Typography>
-                            <Typography variant="small" className="shrink-0 text-slate-500">
-                              {post.createdAt}
-                            </Typography>
-                          </div>
-
-                          {Array.isArray(post.communities) && post.communities.length > 0 ? (
-                            <div className="flex flex-wrap gap-2">
-                              {post.communities.map((community) => (
-                                <Link
-                                  key={`${post.id}-${community}`}
-                                  href={`/pages/community/${encodeURIComponent(community)}`}
-                                >
-                                  <Chip
-                                    value={community}
-                                    size="sm"
-                                    variant="outlined"
-                                    color="blue-gray"
-                                    className="rounded-full"
-                                  />
-                                </Link>
-                              ))}
-                            </div>
-                          ) : null}
-
-                          <Typography className="leading-7 text-slate-700">
-                            {post.content}
-                          </Typography>
-
-                          {post.synthetic ? (
-                            <Typography variant="small" className="text-slate-500">
-                              Seeded feed item for high-volume consumer simulation.
-                            </Typography>
-                          ) : null}
-
-                          <div className="flex flex-wrap items-center gap-2 border-t border-slate-200 pt-3">
-                            <Link href={`/pages/post/${encodeURIComponent(String(post.id))}`}>
-                              <Button size="sm" variant="outlined" color="blue-gray" className="rounded-lg">
-                                Open post
-                              </Button>
-                            </Link>
-                            <Button size="sm" variant="text" color="blue-gray" className="rounded-lg">
-                              Upvote
-                            </Button>
-                            <Button size="sm" variant="text" color="blue-gray" className="rounded-lg">
-                              Comment
-                            </Button>
-                            <Button size="sm" variant="text" color="blue-gray" className="rounded-lg">
-                              Share
-                            </Button>
-                            <Typography variant="small" className="ml-auto inline-flex items-center gap-1 text-slate-500">
-                              <HiCheckCircle aria-hidden="true" />
-                              Posted in {Array.isArray(post.communities) ? post.communities.length : 0} communities
-                            </Typography>
-                          </div>
-                        </CardBody>
-                      </Card>
-                    ))
-                  )}
-
-                  {feedVisibleCount < displayFeedPosts.length ? (
-                    <div className="flex justify-center pt-2">
-                      <Button
-                        size="sm"
-                        variant="outlined"
-                        color="blue-gray"
-                        className="rounded-lg"
-                        onClick={() =>
-                          setFeedVisibleCount((prev) => prev + FEED_LOAD_STEP)
-                        }
+                    <div
+                      ref={feedListRef}
+                      className="max-h-[72vh] overflow-y-auto overscroll-contain pr-1"
+                      style={{ WebkitOverflowScrolling: "touch" }}
+                    >
+                      <div
+                        className="relative"
+                        style={{ height: `${feedVirtualizer.getTotalSize()}px` }}
                       >
-                        Load more feed items
-                      </Button>
+                        {feedVirtualizer.getVirtualItems().map((virtualItem) => {
+                          const post = displayFeedPosts[virtualItem.index];
+                          if (!post) return null;
+
+                          return (
+                            <div
+                              key={post.id}
+                              data-index={virtualItem.index}
+                              ref={feedVirtualizer.measureElement}
+                              className="absolute left-0 top-0 w-full pb-4"
+                              style={{ transform: `translateY(${virtualItem.start}px)` }}
+                            >
+                              <Card className="border border-slate-200 shadow-none">
+                                <CardBody className="space-y-4">
+                                  <div className="flex items-start justify-between gap-3">
+                                    <Typography variant="h6" className="text-blue-gray-900">
+                                      {post.title}
+                                    </Typography>
+                                    <Typography variant="small" className="shrink-0 text-slate-500">
+                                      {post.createdAt}
+                                    </Typography>
+                                  </div>
+
+                                  {Array.isArray(post.communities) && post.communities.length > 0 ? (
+                                    <div className="flex flex-wrap gap-2">
+                                      {post.communities.map((community) => (
+                                        <Link
+                                          key={`${post.id}-${community}`}
+                                          href={`/pages/community/${encodeURIComponent(community)}`}
+                                        >
+                                          <Chip
+                                            value={community}
+                                            size="sm"
+                                            variant="outlined"
+                                            color="blue-gray"
+                                            className="rounded-full"
+                                          />
+                                        </Link>
+                                      ))}
+                                    </div>
+                                  ) : null}
+
+                                  <Typography className="leading-7 text-slate-700">
+                                    {post.content}
+                                  </Typography>
+
+                                  {post.synthetic ? (
+                                    <Typography variant="small" className="text-slate-500">
+                                      Seeded feed item for high-volume consumer simulation.
+                                    </Typography>
+                                  ) : null}
+
+                                  <div className="flex flex-wrap items-center gap-2 border-t border-slate-200 pt-3">
+                                    <Link href={`/pages/post/${encodeURIComponent(String(post.id))}`}>
+                                      <Button size="sm" variant="outlined" color="blue-gray" className="rounded-lg">
+                                        Open post
+                                      </Button>
+                                    </Link>
+                                    <Button size="sm" variant="text" color="blue-gray" className="rounded-lg">
+                                      Upvote
+                                    </Button>
+                                    <Button size="sm" variant="text" color="blue-gray" className="rounded-lg">
+                                      Comment
+                                    </Button>
+                                    <Button size="sm" variant="text" color="blue-gray" className="rounded-lg">
+                                      Share
+                                    </Button>
+                                    <Typography variant="small" className="ml-auto inline-flex items-center gap-1 text-slate-500">
+                                      <IconCheckCircle className="h-4 w-4" />
+                                      Posted in {Array.isArray(post.communities) ? post.communities.length : 0} communities
+                                    </Typography>
+                                  </div>
+                                </CardBody>
+                              </Card>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
-                  ) : null}
+                  )}
                 </div>
               </CardBody>
             </Card>

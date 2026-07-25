@@ -3,17 +3,7 @@
 import type { Theme } from "@/app/_context/theme-context";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Button, Card, CardBody, Chip, Option, Select, Typography } from "@/types/mtw";
-import { FcGoogle } from "react-icons/fc";
-import {
-  HiBolt,
-  HiChartBar,
-  HiGlobeAlt,
-  HiShieldCheck,
-  HiSparkles,
-  HiSwatch,
-  HiUsers,
-} from "react-icons/hi2";
+import { Button, Card, CardBody, Chip, Typography } from "@/types/mtw";
 import { useTheme } from "@/app/_context/theme-context";
 
 
@@ -26,9 +16,26 @@ type AccentTheme = {
   badgeText: string;
   headingText: string;
   chipColor: string;
-  selectColor: string;
   buttonColor: string;
 };
+
+function IconGlobe({ className = "" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className} aria-hidden="true">
+      <path d="M3 12h18" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M12 3a15 15 0 0 1 4 9 15 15 0 0 1-4 9 15 15 0 0 1-4-9 15 15 0 0 1 4-9Z" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="12" cy="12" r="9" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function IconGoogleBadge() {
+  return (
+    <span aria-hidden="true" className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-slate-300 bg-white text-xs font-bold text-slate-700">
+      G
+    </span>
+  );
+}
 
 export default function MarketingPage() {
   const router = useRouter();
@@ -42,7 +49,6 @@ export default function MarketingPage() {
       badgeText: "text-orange-700",
       headingText: "text-orange-900",
       chipColor: "orange",
-      selectColor: "orange",
       buttonColor: "orange",
     },
     emerald: {
@@ -52,7 +58,6 @@ export default function MarketingPage() {
       badgeText: "text-emerald-700",
       headingText: "text-emerald-900",
       chipColor: "green",
-      selectColor: "green",
       buttonColor: "green",
     },
     sky: {
@@ -62,7 +67,6 @@ export default function MarketingPage() {
       badgeText: "text-sky-700",
       headingText: "text-sky-900",
       chipColor: "blue",
-      selectColor: "blue",
       buttonColor: "blue",
     },
   };
@@ -71,13 +75,13 @@ export default function MarketingPage() {
 
   useEffect(() => {
     if (window.localStorage.getItem(AUTH_KEY) === "google") {
-      router.replace("/pages/pages/home");
+      router.replace("/pages/home");
     }
   }, [router]);
 
   const handleGoogleLogin = () => {
     window.localStorage.setItem(AUTH_KEY, "google");
-    router.push("/pages/pages/home");
+    router.push("/pages/home");
   };
 
   return (
@@ -88,37 +92,26 @@ export default function MarketingPage() {
       <nav className="sticky top-0 z-20 border-b border-slate-200/70 bg-white/80 backdrop-blur">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-3 sm:px-10 lg:px-16">
           <div className={`flex items-center gap-2 ${activeTheme.headingText}`}>
-            <HiGlobeAlt className="text-lg" aria-hidden="true" />
-            <Typography variant="h6" className={activeTheme.headingText}>
+            <IconGlobe className="h-5 w-5" />
+            <Typography variant="paragraph" className={`text-base font-semibold ${activeTheme.headingText}`}>
               ThreadForge
             </Typography>
           </div>
           <div className="w-40">
-            <Select
-              label="Theme"
+            <label htmlFor="theme-select" className="sr-only">
+              Theme
+            </label>
+            <select
+              id="theme-select"
               value={theme}
-              onChange={(value: string | undefined) => setTheme(value ?? "orange")}
-              color={activeTheme.selectColor}
+              onChange={(event) => setTheme((event.target.value as Theme) ?? "orange")}
+              className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-800 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+              aria-label="Theme"
             >
-              <Option value="orange">
-                <span className="inline-flex items-center gap-2">
-                  <HiSparkles aria-hidden="true" />
-                  Sunrise
-                </span>
-              </Option>
-              <Option value="emerald">
-                <span className="inline-flex items-center gap-2">
-                  <HiSwatch aria-hidden="true" />
-                  Forest
-                </span>
-              </Option>
-              <Option value="sky">
-                <span className="inline-flex items-center gap-2">
-                  <HiChartBar aria-hidden="true" />
-                  Skyline
-                </span>
-              </Option>
-            </Select>
+              <option value="orange">Sunrise</option>
+              <option value="emerald">Forest</option>
+              <option value="sky">Skyline</option>
+            </select>
           </div>
         </div>
       </nav>
@@ -142,7 +135,7 @@ export default function MarketingPage() {
 
         <Typography
           variant="lead"
-          className="mt-6 max-w-2xl text-base leading-8 text-slate-600 sm:text-lg"
+          className="mt-6 max-w-2xl text-base leading-8 text-slate-700 sm:text-lg"
         >
           Meet ThreadForge, a modern community platform inspired by Reddit. Launch topic channels, reward great contributors, and grow a loyal audience with smart moderation tools.
         </Typography>
@@ -153,9 +146,10 @@ export default function MarketingPage() {
             color={activeTheme.buttonColor}
             className="h-13 rounded-2xl bg-white px-6 text-sm font-semibold"
             onClick={handleGoogleLogin}
+            aria-label="Continue with Google"
           >
             <span className="inline-flex items-center gap-3">
-              <FcGoogle className="text-xl" aria-hidden="true" />
+              <IconGoogleBadge />
               Continue with Google
             </span>
           </Button>
@@ -163,7 +157,7 @@ export default function MarketingPage() {
 
         <Typography
           variant="small"
-          className="mt-3 text-sm text-slate-500"
+          className="mt-3 text-sm text-slate-600"
         >
           Google sign-in only. No password to remember and no credit card needed.
         </Typography>
@@ -171,32 +165,28 @@ export default function MarketingPage() {
         <div className="mt-10 grid max-w-3xl grid-cols-2 gap-3 text-sm sm:grid-cols-4">
           <Card className="rounded-xl border border-rose-100 bg-white/90 shadow-none">
             <CardBody className="px-3 py-3 text-center">
-              <Typography variant="small" className="inline-flex items-center gap-2 font-medium text-slate-600">
-                <HiChartBar aria-hidden="true" />
+              <Typography variant="small" className="inline-flex items-center gap-2 font-medium text-slate-700">
                 120k+ posts/day
               </Typography>
             </CardBody>
           </Card>
           <Card className="rounded-xl border border-sky-100 bg-white/90 shadow-none">
             <CardBody className="px-3 py-3 text-center">
-              <Typography variant="small" className="inline-flex items-center gap-2 font-medium text-slate-600">
-                <HiShieldCheck aria-hidden="true" />
+              <Typography variant="small" className="inline-flex items-center gap-2 font-medium text-slate-700">
                 AI moderation
               </Typography>
             </CardBody>
           </Card>
           <Card className="rounded-xl border border-amber-100 bg-white/90 shadow-none">
             <CardBody className="px-3 py-3 text-center">
-              <Typography variant="small" className="inline-flex items-center gap-2 font-medium text-slate-600">
-                <HiUsers aria-hidden="true" />
+              <Typography variant="small" className="inline-flex items-center gap-2 font-medium text-slate-700">
                 Custom channels
               </Typography>
             </CardBody>
           </Card>
           <Card className="rounded-xl border border-emerald-100 bg-white/90 shadow-none">
             <CardBody className="px-3 py-3 text-center">
-              <Typography variant="small" className="inline-flex items-center gap-2 font-medium text-slate-600">
-                <HiBolt aria-hidden="true" />
+              <Typography variant="small" className="inline-flex items-center gap-2 font-medium text-slate-700">
                 Live threads
               </Typography>
             </CardBody>
@@ -217,11 +207,10 @@ export default function MarketingPage() {
             <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <Card className="rounded-2xl border border-slate-200 bg-amber-50 shadow-none">
                 <CardBody className="p-5">
-                  <Typography variant="h5" className="inline-flex items-center gap-2 text-lg font-semibold text-blue-gray-900">
-                    <HiUsers aria-hidden="true" />
+                  <Typography variant="h3" className="text-lg font-semibold text-blue-gray-900">
                     Channel-first communities
                   </Typography>
-                  <Typography variant="small" className="mt-2 text-sm leading-7 text-slate-600">
+                  <Typography variant="small" className="mt-2 text-sm leading-7 text-slate-700">
                     Spin up niche channels in seconds and let members self-organize around topics they care about.
                   </Typography>
                 </CardBody>
@@ -229,11 +218,10 @@ export default function MarketingPage() {
 
               <Card className="rounded-2xl border border-slate-200 bg-sky-50 shadow-none">
                 <CardBody className="p-5">
-                  <Typography variant="h5" className="inline-flex items-center gap-2 text-lg font-semibold text-blue-gray-900">
-                    <HiShieldCheck aria-hidden="true" />
+                  <Typography variant="h3" className="text-lg font-semibold text-blue-gray-900">
                     Trust scoring
                   </Typography>
-                  <Typography variant="small" className="mt-2 text-sm leading-7 text-slate-600">
+                  <Typography variant="small" className="mt-2 text-sm leading-7 text-slate-700">
                     Reward thoughtful posts with dynamic reputation, badges, and visibility boosts.
                   </Typography>
                 </CardBody>
@@ -241,11 +229,10 @@ export default function MarketingPage() {
 
               <Card className="rounded-2xl border border-slate-200 bg-rose-50 shadow-none">
                 <CardBody className="p-5">
-                  <Typography variant="h5" className="inline-flex items-center gap-2 text-lg font-semibold text-blue-gray-900">
-                    <HiBolt aria-hidden="true" />
+                  <Typography variant="h3" className="text-lg font-semibold text-blue-gray-900">
                     Growth automations
                   </Typography>
-                  <Typography variant="small" className="mt-2 text-sm leading-7 text-slate-600">
+                  <Typography variant="small" className="mt-2 text-sm leading-7 text-slate-700">
                     Auto-highlight trending threads and send weekly digest emails that pull users back in.
                   </Typography>
                 </CardBody>
@@ -265,7 +252,7 @@ export default function MarketingPage() {
               >
                 Claim your free launch spot
               </Typography>
-              <Typography variant="small" className="mt-3 max-w-xl text-sm leading-7 text-blue-gray-100 sm:text-base">
+              <Typography variant="small" className="mt-3 max-w-xl text-sm leading-7 text-white/95 sm:text-base">
                 Join creators, developers, and communities already migrating from fragmented forums to one focused home.
               </Typography>
             </div>
@@ -273,9 +260,10 @@ export default function MarketingPage() {
               color="white"
               className="w-full rounded-2xl px-6 py-4 text-sm font-semibold text-blue-gray-900 sm:w-auto"
               onClick={handleGoogleLogin}
+              aria-label="Continue with Google"
             >
               <span className="inline-flex items-center gap-2">
-                <FcGoogle className="text-xl" aria-hidden="true" />
+                <IconGoogleBadge />
                 Continue with Google
               </span>
             </Button>

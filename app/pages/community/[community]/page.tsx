@@ -179,6 +179,17 @@ export default function CommunityPage() {
     );
   };
 
+  const handleLeaveCommunity = () => {
+    if (!isJoined) return;
+
+    const nextJoined = joinedCommunities.filter((item) => item !== communityName);
+    setJoinedCommunities(nextJoined);
+    window.localStorage.setItem(
+      JOINED_COMMUNITIES_KEY,
+      JSON.stringify(nextJoined),
+    );
+  };
+
   return (
     <main className="min-h-screen bg-slate-50">
       <AppNavbar
@@ -248,20 +259,36 @@ export default function CommunityPage() {
                 </div>
               </div>
             ) : (
-              <PostComposer
-                heading={`Create Post in ${communityName}`}
-                title={postTitle}
-                content={postContent}
-                onTitleChange={setPostTitle}
-                onContentChange={setPostContent}
-                onSubmit={handleCreatePost}
-                disabled={postComposerDisabled}
-                buttonLabel="Post to Community"
-                color="blue"
-                contentLabel="What's on your mind?"
-                contentRows={4}
-                helperText="Share an update with this community."
-              />
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                  <Typography variant="small" className="text-slate-700">
+                    You joined {communityName}. You can leave this community from here.
+                  </Typography>
+                  <Button
+                    size="sm"
+                    variant="outlined"
+                    color="red"
+                    onClick={handleLeaveCommunity}
+                  >
+                    Leave Community
+                  </Button>
+                </div>
+
+                <PostComposer
+                  heading={`Create Post in ${communityName}`}
+                  title={postTitle}
+                  content={postContent}
+                  onTitleChange={setPostTitle}
+                  onContentChange={setPostContent}
+                  onSubmit={handleCreatePost}
+                  disabled={postComposerDisabled}
+                  buttonLabel="Post to Community"
+                  color="blue"
+                  contentLabel="What's on your mind?"
+                  contentRows={4}
+                  helperText="Share an update with this community."
+                />
+              </div>
             )}
           </CardBody>
         </Card>
