@@ -1,0 +1,23 @@
+# Dependencies
+node_modules
+npm-debug.log*
+
+# Build outputs
+.next
+out
+
+# VCS and editor
+.git
+.gitignore
+.vscode
+
+# Env files and local config
+.env*
+
+# Docs and miscellaneous
+README.md
+Dockerfile*
+*.md
+
+# OS files
+.DS_Store
