@@ -86,6 +86,8 @@ export default function HomePage() {
   const [feedVisibleCount, setFeedVisibleCount] = useState(INITIAL_FEED_VISIBLE);
   const [isLeftSidebarOpen, setIsLeftSidebarOpen] = useState(true);
   const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(true);
+  const [isMobileLeftModalOpen, setIsMobileLeftModalOpen] = useState(false);
+  const [isMobileRightModalOpen, setIsMobileRightModalOpen] = useState(false);
   const [activeComposer, setActiveComposer] = useState<"post" | "community">("post");
 
   const buttonColors = {
@@ -368,6 +370,182 @@ export default function HomePage() {
     setContent("");
   };
 
+  const leftSidebarContent = (
+    <>
+      <Card className="border border-slate-200 shadow-none">
+        <CardBody className="space-y-3 p-5">
+          <Typography variant="h6" className="text-blue-gray-900">
+            Find Communities
+          </Typography>
+          <Typography variant="small" className="text-slate-500">
+            Customize panel visibility from the Profile menu in the top-right.
+          </Typography>
+          <Input
+            label="Search communities"
+            value={communitySearch}
+            onChange={(event: ChangeEvent<HTMLInputElement>) =>
+              setCommunitySearch(event.target.value)
+            }
+            crossOrigin={undefined}
+            color={buttonColor}
+          />
+        </CardBody>
+      </Card>
+
+      <Card className="border border-slate-200 shadow-none">
+        <CardBody className="space-y-4 p-5">
+          <Typography variant="h5" className="inline-flex items-center gap-2 text-blue-gray-900">
+            <HiUserPlus aria-hidden="true" />
+            Join Communities
+          </Typography>
+
+          <Typography variant="small" className="text-slate-500">
+            Join one or more communities. Unlimited communities supported.
+          </Typography>
+
+          <div className="grid gap-2">
+            {visibleDiscoverCommunities.map((item) => {
+              const isJoined = joinedCommunitiesSet.has(item);
+
+              return (
+                <div
+                  key={item}
+                  className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2"
+                >
+                  <span className="text-sm text-slate-700">{item}</span>
+                  <div className="flex items-center gap-2">
+                    <Link
+                      href={`/pages/community/${encodeURIComponent(item)}`}
+                      className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-blue-gray-700 hover:bg-slate-100"
+                    >
+                      Open
+                      <HiArrowTopRightOnSquare aria-hidden="true" />
+                    </Link>
+                    <Button
+                      size="sm"
+                      color={isJoined ? "blue-gray" : buttonColor}
+                      variant={isJoined ? "outlined" : "filled"}
+                      onClick={() => handleToggleJoinCommunity(item)}
+                      className="rounded-lg"
+                    >
+                      {isJoined ? "Joined" : "Join"}
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+            {discoverVisibleCount < filteredAvailableCommunities.length ? (
+              <Button
+                size="sm"
+                variant="outlined"
+                color={buttonColor}
+                className="rounded-lg"
+                onClick={() =>
+                  setDiscoverVisibleCount(
+                    (prev) => prev + COMMUNITY_PAGE_SIZE,
+                  )
+                }
+              >
+                Load more
+              </Button>
+            ) : null}
+          </div>
+        </CardBody>
+      </Card>
+    </>
+  );
+
+  const rightSidebarContent = (
+    <>
+      <Card className="border border-slate-200 shadow-none">
+        <CardBody className="space-y-3 p-5">
+          <Typography variant="h5" className="text-blue-gray-900">
+            Create
+          </Typography>
+
+          <div className="flex gap-2">
+            <Button
+              color={buttonColor}
+              variant={activeComposer === "post" ? "filled" : "outlined"}
+              className="flex-1 rounded-lg"
+              onClick={() => setActiveComposer("post")}
+            >
+              Post
+            </Button>
+            <Button
+              color={buttonColor}
+              variant={activeComposer === "community" ? "filled" : "outlined"}
+              className="flex-1 rounded-lg"
+              onClick={() => setActiveComposer("community")}
+            >
+              Community
+            </Button>
+          </div>
+        </CardBody>
+      </Card>
+
+      {activeComposer === "community" ? (
+        <Card className="border border-slate-200 shadow-none">
+          <CardBody className="space-y-4 p-5">
+            <Typography variant="h5" className="inline-flex items-center gap-2 text-blue-gray-900">
+              <HiFolderPlus aria-hidden="true" />
+              Create Community
+            </Typography>
+
+            <form className="flex flex-col gap-3" onSubmit={handleCreateCommunity}>
+              <Input
+                label="Community name"
+                value={communityName}
+                onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                  setCommunityName(event.target.value)
+                }
+                crossOrigin={undefined}
+                color={buttonColor}
+              />
+              <Button color={buttonColor} type="submit" disabled={communityDisabled}>
+                Add Community
+              </Button>
+            </form>
+
+            {communities.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {communities.map((item) => (
+                  <span
+                    key={item}
+                    className="rounded-full border border-slate-300 bg-slate-50 px-3 py-1 text-sm text-slate-700"
+                  >
+                    {item}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <Typography variant="small" className="text-slate-500">
+                No custom communities yet.
+              </Typography>
+            )}
+          </CardBody>
+        </Card>
+      ) : (
+        <Card className="border border-slate-200 shadow-none">
+          <CardBody className="space-y-4 p-5">
+            <PostComposer
+              heading="Create New Post"
+              title={title}
+              content={content}
+              onTitleChange={setTitle}
+              onContentChange={setContent}
+              onSubmit={handleCreatePost}
+              disabled={disabled}
+              buttonLabel="Publish Post"
+              helperText="New posts are published to your first joined community."
+              color={buttonColor}
+            />
+          </CardBody>
+        </Card>
+      )}
+    </>
+  );
+
   return (
     <main className="min-h-screen bg-slate-50">
       <AppNavbar
@@ -388,7 +566,7 @@ export default function HomePage() {
               Layout Panels
             </Typography>
 
-            <div className="grid grid-cols-[1fr_auto] items-center gap-3 rounded-lg border border-slate-200 px-2 py-2">
+            <div className="grid min-h-9 grid-cols-[1fr_auto] items-center gap-3 rounded-lg border border-slate-200 px-2.5 py-2">
               <Typography variant="small" className="leading-none text-slate-700">
                 Community Finder
               </Typography>
@@ -399,19 +577,19 @@ export default function HomePage() {
                 onClick={() => setIsLeftSidebarOpen((prev) => !prev)}
                 title={isLeftSidebarOpen ? "Hide Community Finder" : "Show Community Finder"}
                 aria-label={isLeftSidebarOpen ? "Hide Community Finder" : "Show Community Finder"}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 ${
+                className={`relative inline-flex h-6 w-11 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 ${
                   isLeftSidebarOpen ? "bg-blue-500" : "bg-slate-300"
                 }`}
               >
                 <span
-                  className={`h-5 w-5 rounded-full bg-white shadow transition-transform ${
-                    isLeftSidebarOpen ? "translate-x-5" : "translate-x-0.5"
+                  className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                    isLeftSidebarOpen ? "translate-x-5" : "translate-x-0"
                   }`}
                 />
               </button>
             </div>
 
-            <div className="grid grid-cols-[1fr_auto] items-center gap-3 rounded-lg border border-slate-200 px-2 py-2">
+            <div className="grid min-h-9 grid-cols-[1fr_auto] items-center gap-3 rounded-lg border border-slate-200 px-2.5 py-2">
               <Typography variant="small" className="leading-none text-slate-700">
                 Create Panel
               </Typography>
@@ -422,13 +600,13 @@ export default function HomePage() {
                 onClick={() => setIsRightSidebarOpen((prev) => !prev)}
                 title={isRightSidebarOpen ? "Hide Create Panel" : "Show Create Panel"}
                 aria-label={isRightSidebarOpen ? "Hide Create Panel" : "Show Create Panel"}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 ${
+                className={`relative inline-flex h-6 w-11 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 ${
                   isRightSidebarOpen ? "bg-blue-500" : "bg-slate-300"
                 }`}
               >
                 <span
-                  className={`h-5 w-5 rounded-full bg-white shadow transition-transform ${
-                    isRightSidebarOpen ? "translate-x-5" : "translate-x-0.5"
+                  className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                    isRightSidebarOpen ? "translate-x-5" : "translate-x-0"
                   }`}
                 />
               </button>
@@ -438,89 +616,35 @@ export default function HomePage() {
       />
 
       <div className="mx-auto w-full max-w-7xl px-6 py-8 sm:px-10 lg:px-16">
+        <div className="mb-4 flex gap-2 lg:hidden">
+          {isLeftSidebarOpen ? (
+            <Button
+              size="sm"
+              variant="outlined"
+              color="blue-gray"
+              className="rounded-lg"
+              onClick={() => setIsMobileLeftModalOpen(true)}
+            >
+              Open Community Finder
+            </Button>
+          ) : null}
+
+          {isRightSidebarOpen ? (
+            <Button
+              size="sm"
+              color={buttonColor}
+              className="rounded-lg"
+              onClick={() => setIsMobileRightModalOpen(true)}
+            >
+              Open Create Panel
+            </Button>
+          ) : null}
+        </div>
+
         <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
           {isLeftSidebarOpen ? (
-            <aside className="lg:w-80 lg:shrink-0 space-y-4">
-              <Card className="border border-slate-200 shadow-none">
-                <CardBody className="space-y-3 p-5">
-                  <Typography variant="h6" className="text-blue-gray-900">
-                    Find Communities
-                  </Typography>
-                  <Typography variant="small" className="text-slate-500">
-                    Customize panel visibility from the Profile menu in the top-right.
-                  </Typography>
-                  <Input
-                    label="Search communities"
-                    value={communitySearch}
-                    onChange={(event: ChangeEvent<HTMLInputElement>) =>
-                      setCommunitySearch(event.target.value)
-                    }
-                    crossOrigin={undefined}
-                    color={buttonColor}
-                  />
-                </CardBody>
-              </Card>
-
-              <Card className="border border-slate-200 shadow-none">
-                <CardBody className="space-y-4 p-5">
-                  <Typography variant="h5" className="inline-flex items-center gap-2 text-blue-gray-900">
-                    <HiUserPlus aria-hidden="true" />
-                    Join Communities
-                  </Typography>
-
-                  <Typography variant="small" className="text-slate-500">
-                    Join one or more communities. Unlimited communities supported.
-                  </Typography>
-
-                  <div className="grid gap-2">
-                    {visibleDiscoverCommunities.map((item) => {
-                      const isJoined = joinedCommunitiesSet.has(item);
-
-                      return (
-                        <div
-                          key={item}
-                          className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2"
-                        >
-                          <span className="text-sm text-slate-700">{item}</span>
-                          <div className="flex items-center gap-2">
-                            <Link
-                              href={`/pages/community/${encodeURIComponent(item)}`}
-                              className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-blue-gray-700 hover:bg-slate-100"
-                            >
-                              Open
-                              <HiArrowTopRightOnSquare aria-hidden="true" />
-                            </Link>
-                            <Button
-                              size="sm"
-                              color={isJoined ? "blue-gray" : buttonColor}
-                              variant={isJoined ? "outlined" : "filled"}
-                              onClick={() => handleToggleJoinCommunity(item)}
-                              className="rounded-lg"
-                            >
-                              {isJoined ? "Joined" : "Join"}
-                            </Button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                    {discoverVisibleCount < filteredAvailableCommunities.length ? (
-                      <Button
-                        size="sm"
-                        variant="outlined"
-                        color={buttonColor}
-                        className="rounded-lg"
-                        onClick={() =>
-                          setDiscoverVisibleCount(
-                            (prev) => prev + COMMUNITY_PAGE_SIZE,
-                          )
-                        }
-                      >
-                        Load more
-                      </Button>
-                    ) : null}
-                  </div>
-                </CardBody>
-              </Card>
+            <aside className="hidden space-y-4 lg:block lg:w-80 lg:shrink-0">
+              {leftSidebarContent}
             </aside>
           ) : null}
 
@@ -651,97 +775,66 @@ export default function HomePage() {
           </section>
 
           {isRightSidebarOpen ? (
-            <aside className="lg:w-80 lg:shrink-0 space-y-4">
-              <Card className="border border-slate-200 shadow-none">
-                <CardBody className="space-y-3 p-5">
-                  <Typography variant="h5" className="text-blue-gray-900">
-                    Create
-                  </Typography>
-
-                  <div className="flex gap-2">
-                    <Button
-                      color={buttonColor}
-                      variant={activeComposer === "post" ? "filled" : "outlined"}
-                      className="flex-1 rounded-lg"
-                      onClick={() => setActiveComposer("post")}
-                    >
-                      Post
-                    </Button>
-                    <Button
-                      color={buttonColor}
-                      variant={activeComposer === "community" ? "filled" : "outlined"}
-                      className="flex-1 rounded-lg"
-                      onClick={() => setActiveComposer("community")}
-                    >
-                      Community
-                    </Button>
-                  </div>
-                </CardBody>
-              </Card>
-
-              {activeComposer === "community" ? (
-                <Card className="border border-slate-200 shadow-none">
-                  <CardBody className="space-y-4 p-5">
-                    <Typography variant="h5" className="inline-flex items-center gap-2 text-blue-gray-900">
-                      <HiFolderPlus aria-hidden="true" />
-                      Create Community
-                    </Typography>
-
-                    <form className="flex flex-col gap-3" onSubmit={handleCreateCommunity}>
-                      <Input
-                        label="Community name"
-                        value={communityName}
-                        onChange={(event: ChangeEvent<HTMLInputElement>) =>
-                          setCommunityName(event.target.value)
-                        }
-                        crossOrigin={undefined}
-                        color={buttonColor}
-                      />
-                      <Button color={buttonColor} type="submit" disabled={communityDisabled}>
-                        Add Community
-                      </Button>
-                    </form>
-
-                    {communities.length > 0 ? (
-                      <div className="flex flex-wrap gap-2">
-                        {communities.map((item) => (
-                          <span
-                            key={item}
-                            className="rounded-full border border-slate-300 bg-slate-50 px-3 py-1 text-sm text-slate-700"
-                          >
-                            {item}
-                          </span>
-                        ))}
-                      </div>
-                    ) : (
-                      <Typography variant="small" className="text-slate-500">
-                        No custom communities yet.
-                      </Typography>
-                    )}
-                  </CardBody>
-                </Card>
-              ) : (
-                <Card className="border border-slate-200 shadow-none">
-                  <CardBody className="space-y-4 p-5">
-                    <PostComposer
-                      heading="Create New Post"
-                      title={title}
-                      content={content}
-                      onTitleChange={setTitle}
-                      onContentChange={setContent}
-                      onSubmit={handleCreatePost}
-                      disabled={disabled}
-                      buttonLabel="Publish Post"
-                      helperText="New posts are published to your first joined community."
-                      color={buttonColor}
-                    />
-                  </CardBody>
-                </Card>
-              )}
+            <aside className="hidden space-y-4 lg:block lg:w-80 lg:shrink-0">
+              {rightSidebarContent}
             </aside>
           ) : null}
         </div>
       </div>
+
+      {isLeftSidebarOpen && isMobileLeftModalOpen ? (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <div
+            className="absolute inset-0 bg-slate-900/50"
+            onClick={() => setIsMobileLeftModalOpen(false)}
+          />
+
+          <div className="absolute inset-x-4 bottom-4 top-20 overflow-y-auto rounded-2xl bg-slate-50 p-4 shadow-2xl">
+            <div className="mb-4 flex items-center justify-between">
+              <Typography variant="h6" className="text-blue-gray-900">
+                Community Finder
+              </Typography>
+              <Button
+                size="sm"
+                variant="text"
+                color="blue-gray"
+                className="rounded-lg"
+                onClick={() => setIsMobileLeftModalOpen(false)}
+              >
+                Close
+              </Button>
+            </div>
+            <div className="space-y-4">{leftSidebarContent}</div>
+          </div>
+        </div>
+      ) : null}
+
+      {isRightSidebarOpen && isMobileRightModalOpen ? (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <div
+            className="absolute inset-0 bg-slate-900/50"
+            onClick={() => setIsMobileRightModalOpen(false)}
+          />
+
+          <div className="absolute inset-x-4 bottom-4 top-20 overflow-y-auto rounded-2xl bg-slate-50 p-4 shadow-2xl">
+            <div className="mb-4 flex items-center justify-between">
+              <Typography variant="h6" className="text-blue-gray-900">
+                Create
+              </Typography>
+              <Button
+                size="sm"
+                variant="text"
+                color="blue-gray"
+                className="rounded-lg"
+                onClick={() => setIsMobileRightModalOpen(false)}
+              >
+                Close
+              </Button>
+            </div>
+            <div className="space-y-4">{rightSidebarContent}</div>
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }

@@ -105,10 +105,10 @@ export default function AppNavbar({
               <div className="my-2 border-t border-slate-200" />
 
               {profileMenuContent ? (
-                <>
+                <div>
                   {profileMenuContent}
                   <div className="my-2 border-t border-slate-200" />
-                </>
+                </div>
               ) : null}
 
               <MenuItem
