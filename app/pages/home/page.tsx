@@ -4,14 +4,12 @@ import type { ChangeEvent, FormEvent } from "react";
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Button, Card, CardBody, Chip, IconButton, Input, Typography } from "@/types/mtw";
+import { Button, Card, CardBody, Chip, Input, Typography } from "@/types/mtw";
 import {
   HiArrowTopRightOnSquare,
-  HiBars3,
   HiCheckCircle,
   HiFolderPlus,
   HiPencilSquare,
-  HiXMark,
   HiUserPlus,
 } from "react-icons/hi2";
 import { useTheme } from "@/app/_context/theme-context";
@@ -384,30 +382,57 @@ export default function HomePage() {
             />
           </>
         )}
-        rightContent={(
-          <div className="flex items-center gap-1 rounded-xl border border-slate-200 bg-white p-1">
-            <IconButton
-              variant={isLeftSidebarOpen ? "filled" : "text"}
-              color={buttonColor}
-              size="sm"
-              className="rounded-lg"
-              onClick={() => setIsLeftSidebarOpen((prev) => !prev)}
-              title={isLeftSidebarOpen ? "Hide left sidebar" : "Show left sidebar"}
-              aria-label={isLeftSidebarOpen ? "Hide left sidebar" : "Show left sidebar"}
-            >
-              {isLeftSidebarOpen ? <HiXMark aria-hidden="true" /> : <HiBars3 aria-hidden="true" />}
-            </IconButton>
-            <IconButton
-              variant={isRightSidebarOpen ? "filled" : "text"}
-              color={buttonColor}
-              size="sm"
-              className="rounded-lg"
-              onClick={() => setIsRightSidebarOpen((prev) => !prev)}
-              title={isRightSidebarOpen ? "Hide right sidebar" : "Show right sidebar"}
-              aria-label={isRightSidebarOpen ? "Hide right sidebar" : "Show right sidebar"}
-            >
-              {isRightSidebarOpen ? <HiXMark aria-hidden="true" /> : <HiBars3 aria-hidden="true" />}
-            </IconButton>
+        profileMenuContent={(
+          <div className="space-y-2 px-1 py-1">
+            <Typography variant="small" className="px-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Layout Panels
+            </Typography>
+
+            <div className="grid grid-cols-[1fr_auto] items-center gap-3 rounded-lg border border-slate-200 px-2 py-2">
+              <Typography variant="small" className="leading-none text-slate-700">
+                Community Finder
+              </Typography>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={isLeftSidebarOpen}
+                onClick={() => setIsLeftSidebarOpen((prev) => !prev)}
+                title={isLeftSidebarOpen ? "Hide Community Finder" : "Show Community Finder"}
+                aria-label={isLeftSidebarOpen ? "Hide Community Finder" : "Show Community Finder"}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 ${
+                  isLeftSidebarOpen ? "bg-blue-500" : "bg-slate-300"
+                }`}
+              >
+                <span
+                  className={`h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                    isLeftSidebarOpen ? "translate-x-5" : "translate-x-0.5"
+                  }`}
+                />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-[1fr_auto] items-center gap-3 rounded-lg border border-slate-200 px-2 py-2">
+              <Typography variant="small" className="leading-none text-slate-700">
+                Create Panel
+              </Typography>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={isRightSidebarOpen}
+                onClick={() => setIsRightSidebarOpen((prev) => !prev)}
+                title={isRightSidebarOpen ? "Hide Create Panel" : "Show Create Panel"}
+                aria-label={isRightSidebarOpen ? "Hide Create Panel" : "Show Create Panel"}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 ${
+                  isRightSidebarOpen ? "bg-blue-500" : "bg-slate-300"
+                }`}
+              >
+                <span
+                  className={`h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                    isRightSidebarOpen ? "translate-x-5" : "translate-x-0.5"
+                  }`}
+                />
+              </button>
+            </div>
           </div>
         )}
       />
@@ -420,6 +445,9 @@ export default function HomePage() {
                 <CardBody className="space-y-3 p-5">
                   <Typography variant="h6" className="text-blue-gray-900">
                     Find Communities
+                  </Typography>
+                  <Typography variant="small" className="text-slate-500">
+                    Customize panel visibility from the Profile menu in the top-right.
                   </Typography>
                   <Input
                     label="Search communities"

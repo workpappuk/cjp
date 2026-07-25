@@ -18,6 +18,7 @@ type AppNavbarProps = {
   subtitle?: string;
   centerContent?: ReactNode;
   rightContent?: ReactNode;
+  profileMenuContent?: ReactNode;
   maxWidthClassName?: string;
 };
 
@@ -25,6 +26,7 @@ export default function AppNavbar({
   subtitle = "Community control center",
   centerContent = null,
   rightContent = null,
+  profileMenuContent = null,
   maxWidthClassName = "max-w-7xl",
 }: AppNavbarProps) {
   const router = useRouter();
@@ -101,6 +103,13 @@ export default function AppNavbar({
               </MenuItem>
 
               <div className="my-2 border-t border-slate-200" />
+
+              {profileMenuContent ? (
+                <>
+                  {profileMenuContent}
+                  <div className="my-2 border-t border-slate-200" />
+                </>
+              ) : null}
 
               <MenuItem
                 onClick={handleLogout}
