@@ -34,7 +34,7 @@ export default function CommentComposer({
         onChange={(event: ChangeEvent<HTMLInputElement>) =>
           onCommentTextChange(event.target.value)
         }
-        crossOrigin={undefined}
+        variant="standard"
         color={color}
         disabled={!canComment}
       />

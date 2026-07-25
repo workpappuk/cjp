@@ -312,7 +312,7 @@ export default function HomePage() {
   const leftSidebarContent = (
     <>
       <Card className="border border-slate-200 shadow-none">
-        <CardBody className="space-y-3 p-5">
+        <CardBody className="space-y-4 p-5">
           <Typography variant="h6" className="text-blue-gray-900">
             Find Communities
           </Typography>
@@ -320,12 +320,12 @@ export default function HomePage() {
             Customize panel visibility from the Profile menu in the top-right.
           </Typography>
           <Input
+            variant="standard"
             label="Search communities"
             value={communitySearch}
             onChange={(event: ChangeEvent<HTMLInputElement>) =>
               setCommunitySearch(event.target.value)
             }
-            crossOrigin={undefined}
             color={buttonColor}
           />
         </CardBody>
@@ -441,6 +441,8 @@ export default function HomePage() {
 
             <form className="flex flex-col gap-3" onSubmit={handleCreateCommunity}>
               <Input
+                          variant="standard"
+
                 label="Community name"
                 value={communityName}
                 onChange={(event: ChangeEvent<HTMLInputElement>) =>
@@ -630,7 +632,7 @@ export default function HomePage() {
                           No posts in this feed
                         </Typography>
                         <Typography className="text-slate-600">
-                          Create a post from the right sidebar, or join more communities from the left panel.
+                          Join communities from the left panel to get feeds.
                         </Typography>
                       </CardBody>
                     </Card>

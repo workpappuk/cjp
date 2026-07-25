@@ -206,6 +206,8 @@ export default function CommunityPage() {
             </Typography>
             <div className="pt-2">
               <Input
+                          variant="standard"
+
                 label="Search posts in this community"
                 value={searchQuery}
                 onChange={(event: ChangeEvent<HTMLInputElement>) =>

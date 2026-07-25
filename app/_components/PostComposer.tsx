@@ -44,6 +44,8 @@ export default function PostComposer({
 
       <form className="space-y-4" onSubmit={onSubmit}>
         <Input
+                    variant="standard"
+
           label="Post title"
           value={title}
           onChange={(event: ChangeEvent<HTMLInputElement>) => onTitleChange(event.target.value)}
