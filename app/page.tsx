@@ -9,6 +9,7 @@ import { useTheme } from "@/app/_context/theme-context";
 import { createAuthSession, isAuthenticated, type SocialProvider } from "@/app/_utils/auth";
 import { FaDiscord, FaGithub } from "react-icons/fa";
 import { FcGoogle } from "react-icons/fc";
+import GoogleTopRightSignIn from "@/app/_components/GoogleTopRightSignIn";
 
 type SocialProviderOption = {
   id: SocialProvider;
@@ -138,6 +139,7 @@ export default function MarketingPage() {
 
   return (
     <main className="relative overflow-hidden bg-slate-50 text-slate-800">
+      <GoogleTopRightSignIn />
       <div className={`pointer-events-none absolute -top-24 -left-20 h-72 w-72 rounded-full blur-3xl ${activeTheme.blobA}`} />
       <div className={`pointer-events-none absolute top-40 right-0 h-80 w-80 rounded-full blur-3xl ${activeTheme.blobB}`} />
 
