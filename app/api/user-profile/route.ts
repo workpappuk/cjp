@@ -60,7 +60,7 @@ export async function GET() {
       },
       {
         upsert: true,
-        new: true,
+        returnDocument: "after",
       },
     ).lean();
 
@@ -172,7 +172,7 @@ export async function PUT(request: Request) {
       },
       {
         upsert: true,
-        new: true,
+        returnDocument: "after",
       },
     ).lean();
 

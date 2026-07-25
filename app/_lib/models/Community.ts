@@ -19,8 +19,6 @@ const communitySchema = new Schema(
   },
 );
 
-communitySchema.index({ name: 1 }, { unique: true });
-
 export type CommunityDocument = InferSchemaType<typeof communitySchema>;
 
 export const CommunityModel =

@@ -50,8 +50,6 @@ const userProfileSchema = new Schema(
   },
 );
 
-userProfileSchema.index({ email: 1 }, { unique: true });
-
 export type UserProfileDocument = InferSchemaType<typeof userProfileSchema>;
 
 export const UserProfileModel =

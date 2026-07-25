@@ -21,6 +21,19 @@ async function ensureRateLimitIndexes() {
   if (!globalRateLimitState.__threadforgeRateLimitIndexPromise) {
     globalRateLimitState.__threadforgeRateLimitIndexPromise = (async () => {
       await connectToDatabase();
+
+      // Migrate legacy non-TTL expiresAt index to TTL index expected by the model.
+      const existingIndexes = await RateLimitCounterModel.collection.indexes();
+      const expiresAtIndex = existingIndexes.find(
+        (index) => index.name === "expiresAt_1",
+      );
+      if (
+        expiresAtIndex &&
+        expiresAtIndex.expireAfterSeconds === undefined
+      ) {
+        await RateLimitCounterModel.collection.dropIndex("expiresAt_1");
+      }
+
       await RateLimitCounterModel.createIndexes();
       globalRateLimitState.__threadforgeRateLimitIndexReady = true;
     })();
@@ -81,7 +94,7 @@ export async function checkRateLimit(params: {
     },
     {
       upsert: true,
-      new: true,
+      returnDocument: "after",
       setDefaultsOnInsert: true,
       lean: true,
     },

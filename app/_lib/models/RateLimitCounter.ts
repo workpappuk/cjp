@@ -18,7 +18,6 @@ const rateLimitCounterSchema = new Schema(
     bucket: {
       type: Number,
       required: true,
-      index: true,
     },
     count: {
       type: Number,
@@ -29,7 +28,6 @@ const rateLimitCounterSchema = new Schema(
     expiresAt: {
       type: Date,
       required: true,
-      index: true,
     },
   },
   {
