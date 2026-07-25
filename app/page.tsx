@@ -7,7 +7,8 @@ import { signIn, useSession } from "next-auth/react";
 import { Button, Card, CardBody, Chip, Typography } from "@/app/_types/mtw";
 import { useTheme } from "@/app/_context/theme-context";
 import { createAuthSession, isAuthenticated, type SocialProvider } from "@/app/_utils/auth";
-import GoogleTopRightSignIn from "@/app/_components/GoogleTopRightSignIn";
+import { FaDiscord, FaGithub } from "react-icons/fa";
+import { FcGoogle } from "react-icons/fc";
 
 type SocialProviderOption = {
   id: SocialProvider;
@@ -37,24 +38,24 @@ function IconGlobe({ className = "" }: { className?: string }) {
 
 function IconGoogleBadge() {
   return (
-    <span aria-hidden="true" className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-slate-300 bg-white text-xs font-bold text-slate-700">
-      G
+    <span aria-hidden="true" className="inline-flex h-6 w-6 items-center justify-center">
+      <FcGoogle className="h-5 w-5" />
     </span>
   );
 }
 
 function IconGithubBadge() {
   return (
-    <span aria-hidden="true" className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-slate-700 bg-slate-900 text-xs font-bold text-white">
-      GH
+    <span aria-hidden="true" className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-slate-700 bg-slate-900 text-white">
+      <FaGithub className="h-3.5 w-3.5" />
     </span>
   );
 }
 
 function IconDiscordBadge() {
   return (
-    <span aria-hidden="true" className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-indigo-300 bg-indigo-500 text-xs font-bold text-white">
-      D
+    <span aria-hidden="true" className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-indigo-300 bg-indigo-500 text-white">
+      <FaDiscord className="h-3.5 w-3.5" />
     </span>
   );
 }
@@ -137,7 +138,6 @@ export default function MarketingPage() {
 
   return (
     <main className="relative overflow-hidden bg-slate-50 text-slate-800">
-      <GoogleTopRightSignIn />
       <div className={`pointer-events-none absolute -top-24 -left-20 h-72 w-72 rounded-full blur-3xl ${activeTheme.blobA}`} />
       <div className={`pointer-events-none absolute top-40 right-0 h-80 w-80 rounded-full blur-3xl ${activeTheme.blobB}`} />
 
