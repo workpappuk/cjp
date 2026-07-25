@@ -59,6 +59,57 @@ export default function AppNavbar({
   }, [session?.user?.name, session?.user?.email, session?.user?.image]);
 
   useEffect(() => {
+    if (!session?.user?.email) {
+      return;
+    }
+
+    let isMounted = true;
+
+    const syncUserProfile = async () => {
+      try {
+        const response = await fetch("/api/user-profile", {
+          method: "GET",
+          cache: "no-store",
+        });
+
+        if (!response.ok) {
+          return;
+        }
+
+        const payload = (await response.json()) as {
+          name?: string;
+          email?: string;
+          image?: string;
+        };
+
+        if (!isMounted) {
+          return;
+        }
+
+        const nextProfile = {
+          name: payload.name ?? "",
+          email: payload.email ?? "",
+          image: payload.image ?? "",
+        };
+
+        setLocalUser(nextProfile);
+
+        if (typeof window !== "undefined") {
+          window.localStorage.setItem(USER_PROFILE_KEY, JSON.stringify(nextProfile));
+        }
+      } catch {
+        // Fallback stays on session/local profile data when sync fails.
+      }
+    };
+
+    void syncUserProfile();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [session?.user?.email]);
+
+  useEffect(() => {
     if (!isProfileMenuOpen) {
       return;
     }

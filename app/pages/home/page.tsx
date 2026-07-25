@@ -19,9 +19,6 @@ import AppNavbar from "@/app/_components/AppNavbar";
 import PostComposer from "@/app/_components/PostComposer";
 import { isAuthenticated } from "@/app/_utils/auth";
 
-const POSTS_KEY = "threadforge-posts";
-const COMMUNITIES_KEY = "threadforge-communities";
-const JOINED_COMMUNITIES_KEY = "threadforge-joined-communities";
 const HOME_UI_PREFS_KEY = "threadforge-home-ui-prefs";
 
 type PostItem = {
@@ -32,20 +29,14 @@ type PostItem = {
   createdAt: string;
 };
 
-function readJSONFromStorage<T>(key: string, fallbackValue: T): T {
-  const raw = window.localStorage.getItem(key);
-  if (!raw) return fallbackValue;
+type UserProfileResponse = {
+  joinedCommunities?: string[];
+};
 
-  try {
-    const parsed = JSON.parse(raw);
-    return parsed ?? fallbackValue;
-  } catch {
-    return fallbackValue;
-  }
-}
-
-function writeJSONToStorage(key: string, value: unknown): void {
-  window.localStorage.setItem(key, JSON.stringify(value));
+function formatDisplayDate(input: string | Date) {
+  const parsed = new Date(input);
+  if (Number.isNaN(parsed.getTime())) return String(input);
+  return parsed.toLocaleString();
 }
 
 export default function HomePage() {
@@ -67,6 +58,16 @@ export default function HomePage() {
   const discoverListRef = useRef<HTMLDivElement | null>(null);
   const feedListRef = useRef<HTMLDivElement | null>(null);
 
+  const persistJoinedCommunities = async (nextJoined: string[]) => {
+    await fetch("/api/user-profile", {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ joinedCommunities: nextJoined }),
+    });
+  };
+
   const buttonColors = {
     orange: "orange",
     emerald: "green",
@@ -79,6 +80,7 @@ export default function HomePage() {
     content.trim().length === 0;
 
   const communityDisabled = communityName.trim().length < 3;
+  const normalizedCommunityName = communityName.trim().toLowerCase();
 
   const postCountLabel = useMemo(() => {
     return posts.length === 1 ? "1 authored" : `${posts.length} authored`;
@@ -171,10 +173,6 @@ export default function HomePage() {
   }, [isMobileLeftModalOpen, isMobileRightModalOpen]);
 
   useEffect(() => {
-    let cancelled = false;
-    let idleId: number | null = null;
-    let timeoutId: ReturnType<typeof setTimeout> | null = null;
-
     if (status === "loading") {
       return;
     }
@@ -184,14 +182,70 @@ export default function HomePage() {
       return;
     }
 
-    const hydrateFromStorage = () => {
-      const parsedPosts = readJSONFromStorage(POSTS_KEY, []);
-      const parsedCommunities = readJSONFromStorage(COMMUNITIES_KEY, []);
-      const parsedJoined = readJSONFromStorage(JOINED_COMMUNITIES_KEY, []);
+    let isMounted = true;
 
-      setPosts(Array.isArray(parsedPosts) ? parsedPosts : []);
-      setCommunities(Array.isArray(parsedCommunities) ? parsedCommunities : []);
-      setJoinedCommunities(Array.isArray(parsedJoined) ? parsedJoined : []);
+    const hydrateFromApi = async () => {
+      try {
+        const [postsRes, communitiesRes, profileRes] = await Promise.all([
+          fetch("/api/posts", { cache: "no-store" }),
+          fetch("/api/communities", { cache: "no-store" }),
+          fetch("/api/user-profile", { cache: "no-store" }),
+        ]);
+
+        if (!isMounted) {
+          return;
+        }
+
+        if (postsRes.ok) {
+          const parsedPosts = (await postsRes.json()) as Array<{
+            id: string;
+            title: string;
+            content: string;
+            communities?: string[];
+            createdAt: string;
+          }>;
+
+          setPosts(
+            Array.isArray(parsedPosts)
+              ? parsedPosts.map((post) => ({
+                  id: post.id,
+                  title: post.title,
+                  content: post.content,
+                  communities: post.communities,
+                  createdAt: formatDisplayDate(post.createdAt),
+                }))
+              : [],
+          );
+        }
+
+        if (communitiesRes.ok) {
+          const parsedCommunities = (await communitiesRes.json()) as Array<{
+            name: string;
+          }>;
+          setCommunities(
+            Array.isArray(parsedCommunities)
+              ? parsedCommunities.map((item) => item.name)
+              : [],
+          );
+        }
+
+        if (profileRes.ok) {
+          const profile = (await profileRes.json()) as UserProfileResponse;
+          setJoinedCommunities(
+            Array.isArray(profile.joinedCommunities)
+              ? profile.joinedCommunities
+              : [],
+          );
+        }
+      } catch {
+        if (!isMounted) {
+          return;
+        }
+
+        setPosts([]);
+        setCommunities([]);
+        setJoinedCommunities([]);
+      }
     };
 
     const hydrateUiPrefs = () => {
@@ -221,16 +275,10 @@ export default function HomePage() {
 
     hydrateUiPrefs();
 
-    hydrateFromStorage();
+    void hydrateFromApi();
 
     return () => {
-      cancelled = true;
-      if (idleId !== null && typeof window.cancelIdleCallback === "function") {
-        window.cancelIdleCallback(idleId);
-      }
-      if (timeoutId !== null) {
-        clearTimeout(timeoutId);
-      }
+      isMounted = false;
     };
   }, [router, status]);
 
@@ -245,11 +293,11 @@ export default function HomePage() {
     );
   }, [isLeftSidebarOpen, isRightSidebarOpen, activeComposer]);
 
-  const handleCreateCommunity = (event: FormEvent<HTMLFormElement>) => {
+  const handleCreateCommunity = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (communityDisabled) return;
 
-    const nextName = communityName.trim();
+    const nextName = normalizedCommunityName;
     const exists = communities.some(
       (item) => item.toLowerCase() === nextName.toLowerCase(),
     );
@@ -259,9 +307,20 @@ export default function HomePage() {
       return;
     }
 
-    const nextCommunities = [...communities, nextName];
+    const response = await fetch("/api/communities", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ name: nextName }),
+    });
+
+    if (!response.ok) {
+      return;
+    }
+
+    const nextCommunities = [...communities, nextName.toLowerCase()];
     setCommunities(nextCommunities);
-    writeJSONToStorage(COMMUNITIES_KEY, nextCommunities);
 
     const alreadyJoined = joinedCommunities.some(
       (item) => item.toLowerCase() === nextName.toLowerCase(),
@@ -269,42 +328,63 @@ export default function HomePage() {
     if (!alreadyJoined) {
       const nextJoined = [...joinedCommunities, nextName];
       setJoinedCommunities(nextJoined);
-      writeJSONToStorage(JOINED_COMMUNITIES_KEY, nextJoined);
+      await persistJoinedCommunities(nextJoined);
     }
 
     setCommunityName("");
   };
 
-  const handleToggleJoinCommunity = (name: string) => {
-    const isJoined = joinedCommunitiesSet.has(name);
+  const handleToggleJoinCommunity = async (name: string) => {
+    const normalizedName = name.toLowerCase();
+    const isJoined = joinedCommunitiesSet.has(normalizedName);
     if (isJoined) {
       return;
     }
 
-    const nextJoined = [...joinedCommunities, name];
+    const nextJoined = [...joinedCommunities, normalizedName];
 
     setJoinedCommunities(nextJoined);
-    writeJSONToStorage(JOINED_COMMUNITIES_KEY, nextJoined);
+    await persistJoinedCommunities(nextJoined);
   };
 
-  const handleCreatePost = (event: FormEvent<HTMLFormElement>) => {
+  const handleCreatePost = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (disabled) return;
 
+    const response = await fetch("/api/posts", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        title: title.trim(),
+        content: content.trim(),
+        communities: joinedCommunities.length > 0 ? [joinedCommunities[0]] : [],
+      }),
+    });
+
+    if (!response.ok) {
+      return;
+    }
+
+    const created = (await response.json()) as {
+      id: string;
+      title: string;
+      content: string;
+      communities?: string[];
+      createdAt: string;
+    };
+
     const newPost = {
-      id: Date.now(),
-      title: title.trim(),
-      content: content.trim(),
-      communities:
-        joinedCommunities.length > 0
-          ? [joinedCommunities[0]]
-          : [],
-      createdAt: new Date().toLocaleString(),
+      id: created.id,
+      title: created.title,
+      content: created.content,
+      communities: created.communities,
+      createdAt: formatDisplayDate(created.createdAt),
     };
 
     const nextPosts = [newPost, ...posts];
     setPosts(nextPosts);
-    writeJSONToStorage(POSTS_KEY, nextPosts);
     setTitle("");
     setContent("");
   };

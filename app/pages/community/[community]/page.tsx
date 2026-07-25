@@ -11,8 +11,6 @@ import AppNavbar from "@/app/_components/AppNavbar";
 import PostComposer from "@/app/_components/PostComposer";
 import { isAuthenticated } from "@/app/_utils/auth";
 
-const POSTS_KEY = "threadforge-posts";
-const JOINED_COMMUNITIES_KEY = "threadforge-joined-communities";
 const INITIAL_FEED_RENDER_COUNT = 30;
 const FEED_LOAD_STEP = 30;
 
@@ -23,6 +21,16 @@ type PostItem = {
   communities?: string[];
   createdAt: string;
 };
+
+type UserProfileResponse = {
+  joinedCommunities?: string[];
+};
+
+function formatDisplayDate(input: string | Date) {
+  const parsed = new Date(input);
+  if (Number.isNaN(parsed.getTime())) return String(input);
+  return parsed.toLocaleString();
+}
 
 export default function CommunityPage() {
   const router = useRouter();
@@ -35,12 +43,27 @@ export default function CommunityPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [visibleCount, setVisibleCount] = useState(INITIAL_FEED_RENDER_COUNT);
 
+  const persistJoinedCommunities = async (nextJoined: string[]) => {
+    await fetch("/api/user-profile", {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ joinedCommunities: nextJoined }),
+    });
+  };
+
   const communityName = useMemo(() => {
     const raw = Array.isArray(params.community)
       ? params.community[0]
       : params.community;
     return decodeURIComponent(raw || "");
   }, [params.community]);
+
+  const normalizedCommunityName = useMemo(
+    () => communityName.trim().toLowerCase(),
+    [communityName],
+  );
 
   useEffect(() => {
     if (status === "loading") {
@@ -52,44 +75,78 @@ export default function CommunityPage() {
       return;
     }
 
-    const savedPosts = window.localStorage.getItem(POSTS_KEY);
-    if (savedPosts) {
-      try {
-        const parsedPosts = JSON.parse(savedPosts);
-        if (Array.isArray(parsedPosts)) {
-          setPosts(parsedPosts);
-        }
-      } catch {
-        setPosts([]);
-      }
-    }
+    let isMounted = true;
 
-    const savedJoinedCommunities = window.localStorage.getItem(
-      JOINED_COMMUNITIES_KEY,
-    );
-    if (savedJoinedCommunities) {
+    const hydrateFromApi = async () => {
       try {
-        const parsedJoined = JSON.parse(savedJoinedCommunities);
-        if (Array.isArray(parsedJoined)) {
-          setJoinedCommunities(parsedJoined);
+        const [postsRes, profileRes] = await Promise.all([
+          fetch(`/api/posts?community=${encodeURIComponent(communityName.toLowerCase())}`, {
+            cache: "no-store",
+          }),
+          fetch("/api/user-profile", { cache: "no-store" }),
+        ]);
+
+        if (!isMounted) {
+          return;
+        }
+
+        if (postsRes.ok) {
+          const parsedPosts = (await postsRes.json()) as Array<{
+            id: string;
+            title: string;
+            content: string;
+            communities?: string[];
+            createdAt: string;
+          }>;
+
+          setPosts(
+            Array.isArray(parsedPosts)
+              ? parsedPosts.map((post) => ({
+                  id: post.id,
+                  title: post.title,
+                  content: post.content,
+                  communities: post.communities,
+                  createdAt: formatDisplayDate(post.createdAt),
+                }))
+              : [],
+          );
+        }
+
+        if (profileRes.ok) {
+          const profile = (await profileRes.json()) as UserProfileResponse;
+          setJoinedCommunities(
+            Array.isArray(profile.joinedCommunities)
+              ? profile.joinedCommunities
+              : [],
+          );
         }
       } catch {
+        if (!isMounted) {
+          return;
+        }
+
+        setPosts([]);
         setJoinedCommunities([]);
       }
-    }
+    };
 
-  }, [router, status]);
+    void hydrateFromApi();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [communityName, router, status]);
 
   const authoredPosts = useMemo(() => {
     return posts.filter(
       (post) =>
         Array.isArray(post.communities) &&
-        post.communities.includes(communityName),
+          post.communities.includes(normalizedCommunityName),
     );
-  }, [posts, communityName]);
+        }, [normalizedCommunityName, posts]);
 
   const totalCount = authoredPosts.length;
-  const isJoined = joinedCommunities.includes(communityName);
+  const isJoined = joinedCommunities.includes(normalizedCommunityName);
   const postComposerDisabled =
     !isJoined || postTitle.trim().length === 0 || postContent.trim().length === 0;
 
@@ -122,45 +179,62 @@ export default function CommunityPage() {
     setVisibleCount(INITIAL_FEED_RENDER_COUNT);
   }, [communityName, searchQuery]);
 
-  const handleCreatePost = (event: FormEvent<HTMLFormElement>) => {
+  const handleCreatePost = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!isJoined || postComposerDisabled) return;
 
+    const response = await fetch("/api/posts", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        title: postTitle.trim(),
+        content: postContent.trim(),
+        communities: [communityName.toLowerCase()],
+      }),
+    });
+
+    if (!response.ok) {
+      return;
+    }
+
+    const created = (await response.json()) as {
+      id: string;
+      title: string;
+      content: string;
+      communities?: string[];
+      createdAt: string;
+    };
+
     const newPost = {
-      id: Date.now(),
-      title: postTitle.trim(),
-      content: postContent.trim(),
-      communities: [communityName],
-      createdAt: new Date().toLocaleString(),
+      id: created.id,
+      title: created.title,
+      content: created.content,
+      communities: created.communities,
+      createdAt: formatDisplayDate(created.createdAt),
     };
 
     const nextPosts = [newPost, ...posts];
     setPosts(nextPosts);
-    window.localStorage.setItem(POSTS_KEY, JSON.stringify(nextPosts));
     setPostTitle("");
     setPostContent("");
   };
 
-  const handleJoinCommunity = () => {
+  const handleJoinCommunity = async () => {
     if (isJoined) return;
 
-    const nextJoined = [...joinedCommunities, communityName];
+    const nextJoined = [...joinedCommunities, normalizedCommunityName];
     setJoinedCommunities(nextJoined);
-    window.localStorage.setItem(
-      JOINED_COMMUNITIES_KEY,
-      JSON.stringify(nextJoined),
-    );
+    await persistJoinedCommunities(nextJoined);
   };
 
-  const handleLeaveCommunity = () => {
+  const handleLeaveCommunity = async () => {
     if (!isJoined) return;
 
-    const nextJoined = joinedCommunities.filter((item) => item !== communityName);
+    const nextJoined = joinedCommunities.filter((item) => item !== normalizedCommunityName);
     setJoinedCommunities(nextJoined);
-    window.localStorage.setItem(
-      JOINED_COMMUNITIES_KEY,
-      JSON.stringify(nextJoined),
-    );
+    await persistJoinedCommunities(nextJoined);
   };
 
   return (

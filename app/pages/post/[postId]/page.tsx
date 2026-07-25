@@ -11,10 +11,6 @@ import AppNavbar from "@/app/_components/AppNavbar";
 import CommentComposer from "@/app/_components/CommentComposer";
 import { isAuthenticated } from "@/app/_utils/auth";
 
-const POSTS_KEY = "threadforge-posts";
-const COMMENTS_KEY = "threadforge-post-comments";
-const JOINED_COMMUNITIES_KEY = "threadforge-joined-communities";
-
 type PostItem = {
   id: string | number;
   title: string;
@@ -35,20 +31,14 @@ type CommentThreadProps = {
   depth?: number;
 };
 
-function readJSON<T>(key: string, fallback: T): T {
-  const raw = window.localStorage.getItem(key);
-  if (!raw) return fallback;
+type UserProfileResponse = {
+  joinedCommunities?: string[];
+};
 
-  try {
-    const parsed = JSON.parse(raw);
-    return parsed ?? fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-function writeJSON(key: string, value: unknown): void {
-  window.localStorage.setItem(key, JSON.stringify(value));
+function formatDisplayDate(input: string | Date) {
+  const parsed = new Date(input);
+  if (Number.isNaN(parsed.getTime())) return String(input);
+  return parsed.toLocaleString();
 }
 
 function countComments(comments: CommentItem[]): number {
@@ -89,10 +79,20 @@ export default function PostDetailPage() {
   const router = useRouter();
   const { status } = useSession();
   const params = useParams();
-  const [posts, setPosts] = useState<PostItem[]>([]);
-  const [commentsByPost, setCommentsByPost] = useState<Record<string, CommentItem[]>>({});
+  const [post, setPost] = useState<PostItem | null>(null);
+  const [comments, setComments] = useState<CommentItem[]>([]);
   const [joinedCommunities, setJoinedCommunities] = useState<string[]>([]);
   const [commentText, setCommentText] = useState("");
+
+  const persistJoinedCommunities = async (nextJoined: string[]) => {
+    await fetch("/api/user-profile", {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ joinedCommunities: nextJoined }),
+    });
+  };
 
   const postId = useMemo(() => {
     const raw = Array.isArray(params.postId) ? params.postId[0] : params.postId;
@@ -109,28 +109,84 @@ export default function PostDetailPage() {
       return;
     }
 
-    const parsedPosts = readJSON<PostItem[]>(POSTS_KEY, []);
-    setPosts(Array.isArray(parsedPosts) ? parsedPosts : []);
+    let isMounted = true;
 
-    const parsedComments = readJSON<Record<string, CommentItem[]>>(COMMENTS_KEY, {});
-    setCommentsByPost(parsedComments);
+    const hydrateFromApi = async () => {
+      try {
+        const [postRes, commentsRes, profileRes] = await Promise.all([
+          fetch(`/api/posts/${encodeURIComponent(postId)}`, { cache: "no-store" }),
+          fetch(`/api/posts/${encodeURIComponent(postId)}/comments`, { cache: "no-store" }),
+          fetch("/api/user-profile", { cache: "no-store" }),
+        ]);
 
-    const parsedJoined = readJSON<string[]>(JOINED_COMMUNITIES_KEY, []);
-    setJoinedCommunities(Array.isArray(parsedJoined) ? parsedJoined : []);
-  }, [router, status]);
+        if (!isMounted) {
+          return;
+        }
 
-  const post = useMemo(() => {
-    const found = posts.find((item) => String(item.id) === postId);
-    return found ?? null;
-  }, [posts, postId]);
+        if (postRes.ok) {
+          const parsedPost = (await postRes.json()) as {
+            id: string;
+            title: string;
+            content: string;
+            communities?: string[];
+            createdAt: string;
+          };
 
-  const comments = useMemo(() => {
-    const saved = commentsByPost[postId];
-    if (Array.isArray(saved) && saved.length > 0) {
-      return saved;
-    }
-    return [];
-  }, [commentsByPost, postId]);
+          setPost({
+            id: parsedPost.id,
+            title: parsedPost.title,
+            content: parsedPost.content,
+            communities: parsedPost.communities,
+            createdAt: formatDisplayDate(parsedPost.createdAt),
+          });
+        } else {
+          setPost(null);
+        }
+
+        if (commentsRes.ok) {
+          const parsedComments = (await commentsRes.json()) as Array<{
+            id: string;
+            text: string;
+            createdAt: string;
+          }>;
+
+          setComments(
+            Array.isArray(parsedComments)
+              ? parsedComments.map((comment) => ({
+                  id: comment.id,
+                  text: comment.text,
+                  createdAt: formatDisplayDate(comment.createdAt),
+                  replies: [],
+                }))
+              : [],
+          );
+        }
+
+        if (profileRes.ok) {
+          const profile = (await profileRes.json()) as UserProfileResponse;
+          setJoinedCommunities(
+            Array.isArray(profile.joinedCommunities)
+              ? profile.joinedCommunities
+              : [],
+          );
+        }
+      } catch {
+        if (!isMounted) {
+          return;
+        }
+
+        setPost(null);
+        setComments([]);
+        setJoinedCommunities([]);
+      }
+    };
+
+    void hydrateFromApi();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [postId, router, status]);
 
   const totalCommentCount = useMemo(() => countComments(comments), [comments]);
 
@@ -139,7 +195,9 @@ export default function PostDetailPage() {
       return false;
     }
 
-    return post.communities.some((community) => joinedCommunities.includes(community));
+    return post.communities.some((community) =>
+      joinedCommunities.includes(community.toLowerCase()),
+    );
   }, [post, joinedCommunities]);
 
   const communityToJoinForComments = useMemo(() => {
@@ -147,41 +205,56 @@ export default function PostDetailPage() {
       return "";
     }
 
-    return post.communities.find((community) => !joinedCommunities.includes(community)) || "";
+    return (
+      post.communities.find(
+        (community) => !joinedCommunities.includes(community.toLowerCase()),
+      ) || ""
+    );
   }, [post, joinedCommunities]);
 
-  const handleAddComment = (event: FormEvent<HTMLFormElement>) => {
+  const handleAddComment = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!canComment) return;
 
     const text = commentText.trim();
     if (!text) return;
 
+    const response = await fetch(`/api/posts/${encodeURIComponent(postId)}/comments`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ text }),
+    });
+
+    if (!response.ok) {
+      return;
+    }
+
+    const created = (await response.json()) as {
+      id: string;
+      text: string;
+      createdAt: string;
+    };
+
     const nextComment = {
-      id: `${postId}-${Date.now()}`,
-      text,
-      createdAt: new Date().toLocaleString(),
+      id: created.id,
+      text: created.text,
+      createdAt: formatDisplayDate(created.createdAt),
       replies: [],
     };
 
-    const existing = Array.isArray(commentsByPost[postId]) ? commentsByPost[postId] : [];
-    const nextCommentsByPost = {
-      ...commentsByPost,
-      [postId]: [nextComment, ...existing],
-    };
-
-    setCommentsByPost(nextCommentsByPost);
-    writeJSON(COMMENTS_KEY, nextCommentsByPost);
+    setComments((prev) => [nextComment, ...prev]);
     setCommentText("");
   };
 
-  const handleJoinForComments = () => {
+  const handleJoinForComments = async () => {
     const targetCommunity = communityToJoinForComments;
     if (!targetCommunity) return;
 
-    const nextJoined = [...joinedCommunities, targetCommunity];
+    const nextJoined = [...joinedCommunities, targetCommunity.toLowerCase()];
     setJoinedCommunities(nextJoined);
-    writeJSON(JOINED_COMMUNITIES_KEY, nextJoined);
+    await persistJoinedCommunities(nextJoined);
   };
 
   if (!post) {
