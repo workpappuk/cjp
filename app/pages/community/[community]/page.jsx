@@ -289,7 +289,7 @@ export default function CommunityPage() {
                     </Typography>
                   ) : null}
                   <div className="flex items-center gap-2 border-t border-slate-200 pt-2">
-                    <Link href={`/post/${encodeURIComponent(String(item.id))}`}>
+                    <Link href={`/pages/post/${encodeURIComponent(String(item.id))}`}>
                       <Button size="sm" variant="outlined" color="blue-gray" className="rounded-lg">
                         Open post
                       </Button>
@@ -298,7 +298,7 @@ export default function CommunityPage() {
                       Upvote
                     </Button>
                     {isJoined ? (
-                      <Link href={`/post/${encodeURIComponent(String(item.id))}`}>
+                      <Link href={`/pages/post/${encodeURIComponent(String(item.id))}`}>
                         <Button
                           size="sm"
                           variant="text"

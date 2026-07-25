@@ -340,7 +340,7 @@ export default function PostDetailPage() {
                 {post.communities.map((community) => (
                   <Link
                     key={`${post.id}-${community}`}
-                    href={`/community/${encodeURIComponent(community)}`}
+                    href={`/pages/community/${encodeURIComponent(community)}`}
                   >
                     <Chip
                       value={community}

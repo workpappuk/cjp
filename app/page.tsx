@@ -22,7 +22,7 @@ import {
   HiSwatch,
   HiUsers,
 } from "react-icons/hi2";
-import { useTheme } from "./_components/theme-context";
+import { useTheme } from "./_context/theme-context";
 
 const AUTH_KEY = "threadforge-auth";
 
@@ -67,13 +67,13 @@ export default function MarketingPage() {
 
   useEffect(() => {
     if (window.localStorage.getItem(AUTH_KEY) === "google") {
-      router.replace("/home");
+      router.replace("/pages/home");
     }
   }, [router]);
 
   const handleGoogleLogin = () => {
     window.localStorage.setItem(AUTH_KEY, "google");
-    router.push("/home");
+    router.push("/pages/home");
   };
 
   return (

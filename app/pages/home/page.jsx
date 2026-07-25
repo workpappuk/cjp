@@ -21,7 +21,7 @@ import {
   HiXMark,
   HiUserPlus,
 } from "react-icons/hi2";
-import { useTheme } from "../../_components/theme-context";
+import { useTheme } from "../../_context/theme-context";
 import AppNavbar from "../../_components/AppNavbar";
 import PostComposer from "../../_components/PostComposer";
 
@@ -456,7 +456,7 @@ export default function HomePage() {
                           <span className="text-sm text-slate-700">{item}</span>
                           <div className="flex items-center gap-2">
                             <Link
-                              href={`/community/${encodeURIComponent(item)}`}
+                              href={`/pages/community/${encodeURIComponent(item)}`}
                               className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-blue-gray-700 hover:bg-slate-100"
                             >
                               Open
@@ -553,7 +553,7 @@ export default function HomePage() {
                               {post.communities.map((community) => (
                                 <Link
                                   key={`${post.id}-${community}`}
-                                  href={`/community/${encodeURIComponent(community)}`}
+                                  href={`/pages/community/${encodeURIComponent(community)}`}
                                 >
                                   <Chip
                                     value={community}
@@ -578,7 +578,7 @@ export default function HomePage() {
                           ) : null}
 
                           <div className="flex flex-wrap items-center gap-2 border-t border-slate-200 pt-3">
-                            <Link href={`/post/${encodeURIComponent(String(post.id))}`}>
+                            <Link href={`/pages/post/${encodeURIComponent(String(post.id))}`}>
                               <Button size="sm" variant="outlined" color="blue-gray" className="rounded-lg">
                                 Open post
                               </Button>
