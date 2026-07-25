@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/app/_lib/mongoose";
 import { PostModel } from "@/app/_lib/models/Post";
+import { getApiErrorMessage, logApiError } from "@/app/_lib/api-error";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -34,7 +35,13 @@ export async function GET(_request: Request, { params }: ParamsContext) {
       updatedAt: post.updatedAt,
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Failed to fetch post";
+    logApiError({
+      route: "/api/posts/[postId]",
+      method: "GET",
+      error,
+      context: { postId: params.postId },
+    });
+    const message = getApiErrorMessage(error, "Failed to fetch post");
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

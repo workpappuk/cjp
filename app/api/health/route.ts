@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { connectToDatabase } from "@/app/_lib/mongoose";
+import { getApiErrorMessage, logApiError } from "@/app/_lib/api-error";
 
 export const dynamic = "force-dynamic";
 
@@ -18,8 +19,12 @@ export async function GET() {
       { status: 200 },
     );
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unknown database error";
+    logApiError({
+      route: "/api/health",
+      method: "GET",
+      error,
+    });
+    const message = getApiErrorMessage(error, "Unknown database error");
 
     return NextResponse.json(
       {

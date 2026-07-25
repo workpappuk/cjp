@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/app/_lib/mongoose";
 import { PostModel } from "@/app/_lib/models/Post";
 import { checkRateLimit } from "@/app/_lib/rate-limit";
+import { getApiErrorMessage, logApiError } from "@/app/_lib/api-error";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -35,7 +36,12 @@ export async function GET(request: Request) {
       })),
     );
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Failed to fetch posts";
+    logApiError({
+      route: "/api/posts",
+      method: "GET",
+      error,
+    });
+    const message = getApiErrorMessage(error, "Failed to fetch posts");
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
@@ -100,7 +106,12 @@ export async function POST(request: Request) {
       { status: 201 },
     );
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Failed to create post";
+    logApiError({
+      route: "/api/posts",
+      method: "POST",
+      error,
+    });
+    const message = getApiErrorMessage(error, "Failed to create post");
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

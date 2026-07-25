@@ -4,6 +4,7 @@ import { connectToDatabase } from "@/app/_lib/mongoose";
 import { CommentModel } from "@/app/_lib/models/Comment";
 import { PostModel } from "@/app/_lib/models/Post";
 import { checkRateLimit } from "@/app/_lib/rate-limit";
+import { getApiErrorMessage, logApiError } from "@/app/_lib/api-error";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -45,8 +46,13 @@ export async function GET(_request: Request, { params }: ParamsContext) {
       })),
     );
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Failed to fetch comments";
+    logApiError({
+      route: "/api/posts/[postId]/comments",
+      method: "GET",
+      error,
+      context: { postId: params.postId },
+    });
+    const message = getApiErrorMessage(error, "Failed to fetch comments");
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
@@ -127,8 +133,13 @@ export async function POST(request: Request, { params }: ParamsContext) {
       { status: 201 },
     );
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Failed to create comment";
+    logApiError({
+      route: "/api/posts/[postId]/comments",
+      method: "POST",
+      error,
+      context: { postId: params.postId },
+    });
+    const message = getApiErrorMessage(error, "Failed to create comment");
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/app/_lib/mongoose";
 import { CommunityModel } from "@/app/_lib/models/Community";
 import { checkRateLimit } from "@/app/_lib/rate-limit";
+import { getApiErrorMessage, logApiError } from "@/app/_lib/api-error";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -23,8 +24,12 @@ export async function GET() {
       })),
     );
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Failed to fetch communities";
+    logApiError({
+      route: "/api/communities",
+      method: "GET",
+      error,
+    });
+    const message = getApiErrorMessage(error, "Failed to fetch communities");
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
@@ -84,8 +89,12 @@ export async function POST(request: Request) {
       { status: 201 },
     );
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Failed to create community";
+    logApiError({
+      route: "/api/communities",
+      method: "POST",
+      error,
+    });
+    const message = getApiErrorMessage(error, "Failed to create community");
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

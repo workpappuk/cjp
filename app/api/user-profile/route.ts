@@ -4,9 +4,23 @@ import { authOptions } from "@/app/_lib/auth";
 import { connectToDatabase } from "@/app/_lib/mongoose";
 import { UserProfileModel } from "@/app/_lib/models/UserProfile";
 import { checkRateLimit } from "@/app/_lib/rate-limit";
+import { getApiErrorMessage, logApiError } from "@/app/_lib/api-error";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+type PersistedProfile = {
+  _id: unknown;
+  email?: string;
+  name?: string;
+  image?: string;
+  provider?: string;
+  bio?: string;
+  joinedCommunities?: string[];
+  createdAt?: Date;
+  updatedAt?: Date;
+  lastLoginAt?: Date;
+};
 
 function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
@@ -20,6 +34,30 @@ function isValidImageUrl(value: string) {
   } catch {
     return false;
   }
+}
+
+function isDuplicateKeyError(error: unknown) {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: number }).code === 11000
+  );
+}
+
+function toProfileResponse(profile: PersistedProfile | null | undefined, fallbackEmail: string) {
+  return {
+    id: String(profile?._id ?? ""),
+    email: profile?.email ?? fallbackEmail,
+    name: profile?.name ?? "",
+    image: profile?.image ?? "",
+    provider: profile?.provider ?? "google",
+    bio: profile?.bio ?? "",
+    joinedCommunities: profile?.joinedCommunities ?? [],
+    createdAt: profile?.createdAt,
+    updatedAt: profile?.updatedAt,
+    lastLoginAt: profile?.lastLoginAt,
+  };
 }
 
 async function requireSession() {
@@ -43,42 +81,42 @@ export async function GET() {
   try {
     await connectToDatabase();
 
-    const profile = await UserProfileModel.findOneAndUpdate(
-      { email: auth.email },
-      {
-        $setOnInsert: {
-          email: auth.email,
-          name: auth.session?.user?.name ?? "",
-          image: auth.session?.user?.image ?? "",
-          provider: auth.session?.provider ?? "google",
-          joinedCommunities: [],
+    try {
+      await UserProfileModel.updateOne(
+        { email: auth.email },
+        {
+          $setOnInsert: {
+            email: auth.email,
+            name: auth.session?.user?.name ?? "",
+            image: auth.session?.user?.image ?? "",
+            provider: auth.session?.provider ?? "google",
+            joinedCommunities: [],
+          },
+          $set: {
+            lastLoginAt: new Date(),
+            provider: auth.session?.provider ?? "google",
+          },
         },
-        $set: {
-          lastLoginAt: new Date(),
-          provider: auth.session?.provider ?? "google",
-        },
-      },
-      {
-        upsert: true,
-        returnDocument: "after",
-      },
-    ).lean();
+        { upsert: true },
+      );
+    } catch (error) {
+      // A concurrent request may win the upsert race; read the existing document below.
+      if (!isDuplicateKeyError(error)) {
+        throw error;
+      }
+    }
 
-    return NextResponse.json({
-      id: String(profile?._id),
-      email: profile?.email ?? auth.email,
-      name: profile?.name ?? "",
-      image: profile?.image ?? "",
-      provider: profile?.provider ?? "google",
-      bio: profile?.bio ?? "",
-      joinedCommunities: profile?.joinedCommunities ?? [],
-      createdAt: profile?.createdAt,
-      updatedAt: profile?.updatedAt,
-      lastLoginAt: profile?.lastLoginAt,
-    });
+    const profile = await UserProfileModel.findOne({ email: auth.email }).lean();
+
+    return NextResponse.json(toProfileResponse(profile, auth.email));
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Failed to load user profile";
+    logApiError({
+      route: "/api/user-profile",
+      method: "GET",
+      error,
+      context: { email: auth.email },
+    });
+    const message = getApiErrorMessage(error, "Failed to load user profile");
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
@@ -160,37 +198,45 @@ export async function PUT(request: Request) {
       );
     }
 
-    const profile = await UserProfileModel.findOneAndUpdate(
-      { email: auth.email },
-      {
-        $setOnInsert: {
-          email: auth.email,
-          provider: auth.session?.provider ?? "google",
-          joinedCommunities: [],
-        },
-        $set: nextSet,
-      },
-      {
-        upsert: true,
-        returnDocument: "after",
-      },
-    ).lean();
+    let profile: PersistedProfile | null = null;
 
-    return NextResponse.json({
-      id: String(profile?._id),
-      email: profile?.email ?? auth.email,
-      name: profile?.name ?? "",
-      image: profile?.image ?? "",
-      provider: profile?.provider ?? "google",
-      bio: profile?.bio ?? "",
-      joinedCommunities: profile?.joinedCommunities ?? [],
-      createdAt: profile?.createdAt,
-      updatedAt: profile?.updatedAt,
-      lastLoginAt: profile?.lastLoginAt,
-    });
+    try {
+      profile = await UserProfileModel.findOneAndUpdate(
+        { email: auth.email },
+        {
+          $setOnInsert: {
+            email: auth.email,
+            provider: auth.session?.provider ?? "google",
+            joinedCommunities: [],
+          },
+          $set: nextSet,
+        },
+        {
+          upsert: true,
+          returnDocument: "after",
+        },
+      ).lean();
+    } catch (error) {
+      if (!isDuplicateKeyError(error)) {
+        throw error;
+      }
+
+      await UserProfileModel.updateOne(
+        { email: auth.email },
+        { $set: nextSet },
+      );
+      profile = await UserProfileModel.findOne({ email: auth.email }).lean();
+    }
+
+    return NextResponse.json(toProfileResponse(profile, auth.email));
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Failed to update user profile";
+    logApiError({
+      route: "/api/user-profile",
+      method: "PUT",
+      error,
+      context: { email: auth.email },
+    });
+    const message = getApiErrorMessage(error, "Failed to update user profile");
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
