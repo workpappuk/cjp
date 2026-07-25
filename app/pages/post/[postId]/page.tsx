@@ -4,12 +4,12 @@ import type { FormEvent } from "react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Card, CardBody, Chip, Typography } from "@/types/mtw";
+import { Card, CardBody, Chip, Typography } from "@/app/_types/mtw";
 import { HiArrowLeft, HiChatBubbleBottomCenterText } from "react-icons/hi2";
 import AppNavbar from "@/app/_components/AppNavbar";
 import CommentComposer from "@/app/_components/CommentComposer";
+import { isAuthenticated } from "@/app/_utils/auth";
 
-const AUTH_KEY = "threadforge-auth";
 const POSTS_KEY = "threadforge-posts";
 const COMMENTS_KEY = "threadforge-post-comments";
 const JOINED_COMMUNITIES_KEY = "threadforge-joined-communities";
@@ -202,7 +202,7 @@ export default function PostDetailPage() {
   }, [params.postId]);
 
   useEffect(() => {
-    if (window.localStorage.getItem(AUTH_KEY) !== "google") {
+    if (!isAuthenticated()) {
       router.replace("/");
       return;
     }

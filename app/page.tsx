@@ -3,11 +3,15 @@
 import type { Theme } from "@/app/_context/theme-context";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Button, Card, CardBody, Chip, Typography } from "@/types/mtw";
+import { Button, Card, CardBody, Chip, Typography } from "@/app/_types/mtw";
 import { useTheme } from "@/app/_context/theme-context";
+import { createAuthSession, isAuthenticated, type SocialProvider } from "@/app/_utils/auth";
 
-
-const AUTH_KEY = "threadforge-auth";
+type SocialProviderOption = {
+  id: SocialProvider;
+  label: string;
+  subLabel: string;
+};
 
 type AccentTheme = {
   blobA: string;
@@ -37,9 +41,42 @@ function IconGoogleBadge() {
   );
 }
 
+function IconGithubBadge() {
+  return (
+    <span aria-hidden="true" className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-slate-700 bg-slate-900 text-xs font-bold text-white">
+      GH
+    </span>
+  );
+}
+
+function IconDiscordBadge() {
+  return (
+    <span aria-hidden="true" className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-indigo-300 bg-indigo-500 text-xs font-bold text-white">
+      D
+    </span>
+  );
+}
+
 export default function MarketingPage() {
   const router = useRouter();
   const { theme, setTheme } = useTheme();
+  const socialProviders: SocialProviderOption[] = [
+    {
+      id: "google",
+      label: "Google",
+      subLabel: "Best for personal creators",
+    },
+    {
+      id: "github",
+      label: "GitHub",
+      subLabel: "Best for developer communities",
+    },
+    {
+      id: "discord",
+      label: "Discord",
+      subLabel: "Best for real-time groups",
+    },
+  ];
 
   const accentThemes: Record<Theme, AccentTheme> = {
     orange: {
@@ -74,14 +111,20 @@ export default function MarketingPage() {
   const activeTheme = accentThemes[theme] ?? accentThemes.orange;
 
   useEffect(() => {
-    if (window.localStorage.getItem(AUTH_KEY) === "google") {
+    if (isAuthenticated()) {
       router.replace("/pages/home");
     }
   }, [router]);
 
-  const handleGoogleLogin = () => {
-    window.localStorage.setItem(AUTH_KEY, "google");
+  const handleSocialLogin = (provider: SocialProvider) => {
+    createAuthSession(provider);
     router.push("/pages/home");
+  };
+
+  const renderProviderBadge = (provider: SocialProvider) => {
+    if (provider === "google") return <IconGoogleBadge />;
+    if (provider === "github") return <IconGithubBadge />;
+    return <IconDiscordBadge />;
   };
 
   return (
@@ -140,26 +183,32 @@ export default function MarketingPage() {
           Meet ThreadForge, a modern community platform inspired by Reddit. Launch topic channels, reward great contributors, and grow a loyal audience with smart moderation tools.
         </Typography>
 
-        <div className="mt-10 flex w-full max-w-lg flex-col gap-3">
-          <Button
-            variant="outlined"
-            color={activeTheme.buttonColor}
-            className="h-13 rounded-2xl bg-white px-6 text-sm font-semibold"
-            onClick={handleGoogleLogin}
-            aria-label="Continue with Google"
-          >
-            <span className="inline-flex items-center gap-3">
-              <IconGoogleBadge />
-              Continue with Google
-            </span>
-          </Button>
+        <div className="mt-10 grid w-full max-w-3xl gap-3 sm:grid-cols-3">
+          {socialProviders.map((provider) => (
+            <Button
+              key={provider.id}
+              variant="outlined"
+              color={activeTheme.buttonColor}
+              className="h-auto rounded-2xl bg-white px-4 py-4 text-left"
+              onClick={() => handleSocialLogin(provider.id)}
+              aria-label={`Continue with ${provider.label}`}
+            >
+              <span className="flex items-center gap-3">
+                {renderProviderBadge(provider.id)}
+                <span className="flex flex-col">
+                  <span className="text-sm font-semibold text-slate-900">Continue with {provider.label}</span>
+                  <span className="text-xs text-slate-500">{provider.subLabel}</span>
+                </span>
+              </span>
+            </Button>
+          ))}
         </div>
 
         <Typography
           variant="small"
           className="mt-3 text-sm text-slate-600"
         >
-          Google sign-in only. No password to remember and no credit card needed.
+          Social sign-in only. Use Google, GitHub, or Discord with no password setup.
         </Typography>
 
         <div className="mt-10 grid max-w-3xl grid-cols-2 gap-3 text-sm sm:grid-cols-4">
@@ -259,7 +308,7 @@ export default function MarketingPage() {
             <Button
               color="white"
               className="w-full rounded-2xl px-6 py-4 text-sm font-semibold text-blue-gray-900 sm:w-auto"
-              onClick={handleGoogleLogin}
+              onClick={() => handleSocialLogin("google")}
               aria-label="Continue with Google"
             >
               <span className="inline-flex items-center gap-2">

@@ -5,12 +5,12 @@ import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { Button, Card, CardBody, Chip, Input, Typography } from "@/types/mtw";
+import { Button, Card, CardBody, Chip, Input, Typography } from "@/app/_types/mtw";
 import { useTheme } from "@/app/_context/theme-context";
 import AppNavbar from "@/app/_components/AppNavbar";
 import PostComposer from "@/app/_components/PostComposer";
+import { isAuthenticated } from "@/app/_utils/auth";
 
-const AUTH_KEY = "threadforge-auth";
 const POSTS_KEY = "threadforge-posts";
 const COMMUNITIES_KEY = "threadforge-communities";
 const JOINED_COMMUNITIES_KEY = "threadforge-joined-communities";
@@ -316,7 +316,7 @@ export default function HomePage() {
     let idleId: number | null = null;
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
-    if (window.localStorage.getItem(AUTH_KEY) !== "google") {
+    if (!isAuthenticated()) {
       router.replace("/");
       return;
     }

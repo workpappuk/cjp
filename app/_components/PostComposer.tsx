@@ -1,7 +1,7 @@
 "use client";
 
 import type { ChangeEvent, FormEvent } from "react";
-import { Button, Input, Typography } from "@/types/mtw";
+import { Button, Input, Typography } from "@/app/_types/mtw";
 
 type PostComposerProps = {
   heading?: string;

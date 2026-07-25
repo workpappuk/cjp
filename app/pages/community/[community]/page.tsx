@@ -4,12 +4,12 @@ import type { ChangeEvent, FormEvent } from "react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Button, Card, CardBody, Chip, Input, Typography } from "@/types/mtw";
+import { Button, Card, CardBody, Chip, Input, Typography } from "@/app/_types/mtw";
 import { HiArrowLeft, HiCheckCircle, HiUserPlus } from "react-icons/hi2";
 import AppNavbar from "@/app/_components/AppNavbar";
 import PostComposer from "@/app/_components/PostComposer";
+import { isAuthenticated } from "@/app/_utils/auth";
 
-const AUTH_KEY = "threadforge-auth";
 const POSTS_KEY = "threadforge-posts";
 const JOINED_COMMUNITIES_KEY = "threadforge-joined-communities";
 const COMMUNITY_POST_COUNTS_KEY = "threadforge-community-post-counts";
@@ -45,7 +45,7 @@ export default function CommunityPage() {
   }, [params.community]);
 
   useEffect(() => {
-    if (window.localStorage.getItem(AUTH_KEY) !== "google") {
+    if (!isAuthenticated()) {
       router.replace("/");
       return;
     }

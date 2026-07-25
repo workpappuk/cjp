@@ -4,10 +4,9 @@ import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Button, Typography } from "@/types/mtw";
+import { Button, Typography } from "@/app/_types/mtw";
 import { useTheme } from "@/app/_context/theme-context";
-
-const AUTH_KEY = "threadforge-auth";
+import { clearAuthSession } from "@/app/_utils/auth";
 
 type AppNavbarProps = {
   subtitle?: string;
@@ -95,7 +94,7 @@ export default function AppNavbar({
   }, [isProfileMenuOpen]);
 
   const handleLogout = () => {
-    window.localStorage.removeItem(AUTH_KEY);
+    clearAuthSession();
     router.replace("/");
   };
 
