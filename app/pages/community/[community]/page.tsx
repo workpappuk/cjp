@@ -4,6 +4,7 @@ import type { ChangeEvent, FormEvent } from "react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { Button, Card, CardBody, Chip, Input, Typography } from "@/app/_types/mtw";
 import { HiArrowLeft, HiCheckCircle, HiUserPlus } from "react-icons/hi2";
 import AppNavbar from "@/app/_components/AppNavbar";
@@ -28,6 +29,7 @@ type PostItem = {
 
 export default function CommunityPage() {
   const router = useRouter();
+  const { status } = useSession();
   const params = useParams();
   const [posts, setPosts] = useState<PostItem[]>([]);
   const [postTitle, setPostTitle] = useState("");
@@ -45,7 +47,11 @@ export default function CommunityPage() {
   }, [params.community]);
 
   useEffect(() => {
-    if (!isAuthenticated()) {
+    if (status === "loading") {
+      return;
+    }
+
+    if (status === "unauthenticated" && !isAuthenticated()) {
       router.replace("/");
       return;
     }
@@ -89,7 +95,7 @@ export default function CommunityPage() {
         setCommunityPostCounts({});
       }
     }
-  }, [router]);
+  }, [router, status]);
 
   const authoredPosts = useMemo(() => {
     return posts.filter(

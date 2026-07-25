@@ -3,6 +3,7 @@
 import type { ChangeEvent, FormEvent } from "react";
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { Button, Card, CardBody, Chip, Input, Typography } from "@/app/_types/mtw";
@@ -149,6 +150,7 @@ function buildSeedData() {
 
 export default function HomePage() {
   const router = useRouter();
+  const { status } = useSession();
   const { theme } = useTheme();
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -316,7 +318,11 @@ export default function HomePage() {
     let idleId: number | null = null;
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
-    if (!isAuthenticated()) {
+    if (status === "loading") {
+      return;
+    }
+
+    if (status === "unauthenticated" && !isAuthenticated()) {
       router.replace("/");
       return;
     }
@@ -404,7 +410,7 @@ export default function HomePage() {
         clearTimeout(timeoutId);
       }
     };
-  }, [router]);
+  }, [router, status]);
 
   useEffect(() => {
     window.localStorage.setItem(

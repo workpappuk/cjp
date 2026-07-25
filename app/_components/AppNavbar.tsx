@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { signOut } from "next-auth/react";
 import { Button, Typography } from "@/app/_types/mtw";
 import { useTheme } from "@/app/_context/theme-context";
 import { clearAuthSession } from "@/app/_utils/auth";
@@ -62,7 +62,6 @@ export default function AppNavbar({
   profileMenuContent = null,
   maxWidthClassName = "max-w-7xl",
 }: AppNavbarProps) {
-  const router = useRouter();
   const { theme, setTheme } = useTheme();
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
@@ -93,9 +92,9 @@ export default function AppNavbar({
     };
   }, [isProfileMenuOpen]);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     clearAuthSession();
-    router.replace("/");
+    await signOut({ callbackUrl: "/" });
   };
 
   return (

@@ -4,6 +4,7 @@ import type { FormEvent } from "react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { Card, CardBody, Chip, Typography } from "@/app/_types/mtw";
 import { HiArrowLeft, HiChatBubbleBottomCenterText } from "react-icons/hi2";
 import AppNavbar from "@/app/_components/AppNavbar";
@@ -190,6 +191,7 @@ function buildSyntheticPost(postId: string): PostItem | null {
 
 export default function PostDetailPage() {
   const router = useRouter();
+  const { status } = useSession();
   const params = useParams();
   const [posts, setPosts] = useState<PostItem[]>([]);
   const [commentsByPost, setCommentsByPost] = useState<Record<string, CommentItem[]>>({});
@@ -202,7 +204,11 @@ export default function PostDetailPage() {
   }, [params.postId]);
 
   useEffect(() => {
-    if (!isAuthenticated()) {
+    if (status === "loading") {
+      return;
+    }
+
+    if (status === "unauthenticated" && !isAuthenticated()) {
       router.replace("/");
       return;
     }
@@ -215,7 +221,7 @@ export default function PostDetailPage() {
 
     const parsedJoined = readJSON<string[]>(JOINED_COMMUNITIES_KEY, []);
     setJoinedCommunities(Array.isArray(parsedJoined) ? parsedJoined : []);
-  }, [router]);
+  }, [router, status]);
 
   const post = useMemo(() => {
     const found = posts.find((item) => String(item.id) === postId);

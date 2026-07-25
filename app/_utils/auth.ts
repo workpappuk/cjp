@@ -1,6 +1,7 @@
 export const AUTH_PROVIDER_KEY = "threadforge-auth";
 export const ACCESS_TOKEN_KEY = "threadforge-access-token";
 export const ACCESS_TOKEN_EXPIRY_KEY = "threadforge-access-token-expiry";
+export const USER_PROFILE_KEY = "threadforge-user-profile";
 
 const ACCESS_TOKEN_TTL_MS = 1000 * 60 * 60 * 24;
 
@@ -27,10 +28,10 @@ export function generateAccessToken(provider: SocialProvider) {
   return `tf_${provider}_${encodedPayload}`;
 }
 
-export function createAuthSession(provider: SocialProvider) {
+export function createAuthSession(provider: SocialProvider, accessToken?: string) {
   if (!isBrowser()) return "";
 
-  const token = generateAccessToken(provider);
+  const token = accessToken ?? generateAccessToken(provider);
   const expiresAt = String(nowMs() + ACCESS_TOKEN_TTL_MS);
 
   window.localStorage.setItem(AUTH_PROVIDER_KEY, provider);
@@ -46,6 +47,7 @@ export function clearAuthSession() {
   window.localStorage.removeItem(AUTH_PROVIDER_KEY);
   window.localStorage.removeItem(ACCESS_TOKEN_KEY);
   window.localStorage.removeItem(ACCESS_TOKEN_EXPIRY_KEY);
+  window.localStorage.removeItem(USER_PROFILE_KEY);
 }
 
 export function getAccessToken() {
