@@ -3,14 +3,14 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Button, Menu, MenuHandler, MenuItem, MenuList, Typography } from "../../types/mtw";
+import { Button, Menu, MenuHandler, MenuItem, MenuList, Typography } from "@/types/mtw";
 import {
   HiArrowRightOnRectangle,
   HiCheck,
   HiGlobeAlt,
   HiUserCircle,
 } from "react-icons/hi2";
-import { useTheme } from "../_context/theme-context";
+import { useTheme } from "@/app/_context/theme-context";
 
 const AUTH_KEY = "threadforge-auth";
 

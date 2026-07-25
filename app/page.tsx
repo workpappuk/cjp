@@ -1,9 +1,9 @@
 "use client";
 
-import type { Theme } from "./_context/theme-context";
+import type { Theme } from "@/app/_context/theme-context";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Button, Card, CardBody, Chip, Option, Select, Typography } from "../types/mtw";
+import { Button, Card, CardBody, Chip, Option, Select, Typography } from "@/types/mtw";
 import { FcGoogle } from "react-icons/fc";
 import {
   HiBolt,
@@ -14,7 +14,7 @@ import {
   HiSwatch,
   HiUsers,
 } from "react-icons/hi2";
-import { useTheme } from "./_context/theme-context";
+import { useTheme } from "@/app/_context/theme-context";
 
 
 const AUTH_KEY = "threadforge-auth";

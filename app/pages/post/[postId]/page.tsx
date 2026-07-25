@@ -4,10 +4,10 @@ import type { FormEvent } from "react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Card, CardBody, Chip, Typography } from "../../../../types/mtw";
+import { Card, CardBody, Chip, Typography } from "@/types/mtw";
 import { HiArrowLeft, HiChatBubbleBottomCenterText } from "react-icons/hi2";
-import AppNavbar from "../../../_components/AppNavbar";
-import CommentComposer from "../../../_components/CommentComposer";
+import AppNavbar from "@/app/_components/AppNavbar";
+import CommentComposer from "@/app/_components/CommentComposer";
 
 const AUTH_KEY = "threadforge-auth";
 const POSTS_KEY = "threadforge-posts";

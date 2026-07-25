@@ -4,7 +4,7 @@ import type { ChangeEvent, FormEvent } from "react";
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Button, Card, CardBody, Chip, IconButton, Input, Typography } from "../../../types/mtw";
+import { Button, Card, CardBody, Chip, IconButton, Input, Typography } from "@/types/mtw";
 import {
   HiArrowTopRightOnSquare,
   HiBars3,
@@ -14,9 +14,9 @@ import {
   HiXMark,
   HiUserPlus,
 } from "react-icons/hi2";
-import { useTheme } from "../../_context/theme-context";
-import AppNavbar from "../../_components/AppNavbar";
-import PostComposer from "../../_components/PostComposer";
+import { useTheme } from "@/app/_context/theme-context";
+import AppNavbar from "@/app/_components/AppNavbar";
+import PostComposer from "@/app/_components/PostComposer";
 
 const AUTH_KEY = "threadforge-auth";
 const POSTS_KEY = "threadforge-posts";
