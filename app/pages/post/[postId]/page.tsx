@@ -14,20 +14,6 @@ import { isAuthenticated } from "@/app/_utils/auth";
 const POSTS_KEY = "threadforge-posts";
 const COMMENTS_KEY = "threadforge-post-comments";
 const JOINED_COMMUNITIES_KEY = "threadforge-joined-communities";
-const SEEDED_COMMENTS_PER_POST = 100;
-const MAX_NESTED_DEPTH = 3;
-const COMMENT_MESSAGE_POOL = [
-  "Great take. This should spark a useful discussion.",
-  "I tested this approach and it worked well for me.",
-  "Can you share a bit more detail on your setup?",
-  "Interesting perspective, especially for newcomers.",
-  "I agree with most points, but there is one trade-off.",
-  "This is exactly what our team was debating today.",
-  "Thanks for posting this. Saving it for later.",
-  "The examples make this much easier to understand.",
-  "I would also compare this against alternative options.",
-  "Solid summary. Looking forward to follow-up updates.",
-];
 
 type PostItem = {
   id: string | number;
@@ -35,7 +21,6 @@ type PostItem = {
   content: string;
   communities?: string[];
   createdAt: string;
-  synthetic?: boolean;
 };
 
 type CommentItem = {
@@ -43,15 +28,6 @@ type CommentItem = {
   text: string;
   createdAt: string;
   replies: CommentItem[];
-};
-
-type SeedRandom = () => number;
-
-type NestedRepliesOptions = {
-  parentId: string;
-  depth: number;
-  maxDepth: number;
-  nextRandom: SeedRandom;
 };
 
 type CommentThreadProps = {
@@ -73,66 +49,6 @@ function readJSON<T>(key: string, fallback: T): T {
 
 function writeJSON(key: string, value: unknown): void {
   window.localStorage.setItem(key, JSON.stringify(value));
-}
-
-function createSeededNumberGenerator(seedText: string): SeedRandom {
-  let seed = 7;
-  for (let i = 0; i < seedText.length; i += 1) {
-    seed = (seed * 31 + seedText.charCodeAt(i)) % 2147483647;
-  }
-
-  if (seed <= 0) seed += 2147483646;
-
-  return () => {
-    seed = (seed * 48271) % 2147483647;
-    return seed / 2147483647;
-  };
-}
-
-function randomMessage(nextRandom: SeedRandom): string {
-  const index = Math.floor(nextRandom() * COMMENT_MESSAGE_POOL.length);
-  return COMMENT_MESSAGE_POOL[index] ?? COMMENT_MESSAGE_POOL[0];
-}
-
-function buildNestedReplies({ parentId, depth, maxDepth, nextRandom }: NestedRepliesOptions): CommentItem[] {
-  if (depth >= maxDepth) return [];
-
-  const replyCount = Math.floor(nextRandom() * 3);
-  return Array.from({ length: replyCount }, (_, replyIndex) => {
-    const id = `${parentId}-r${depth}-${replyIndex + 1}`;
-
-    return {
-      id,
-      text: randomMessage(nextRandom),
-      createdAt: `${Math.floor(nextRandom() * 59) + 1}m ago`,
-      replies: buildNestedReplies({
-        parentId: id,
-        depth: depth + 1,
-        maxDepth,
-        nextRandom,
-      }),
-    };
-  });
-}
-
-function buildSeededComments(postId: string, count = SEEDED_COMMENTS_PER_POST): CommentItem[] {
-  const nextRandom = createSeededNumberGenerator(postId);
-
-  return Array.from({ length: count }, (_, index) => {
-    const id = `${postId}-c${index + 1}`;
-
-    return {
-      id,
-      text: randomMessage(nextRandom),
-      createdAt: `${Math.floor(nextRandom() * 120) + 1}m ago`,
-      replies: buildNestedReplies({
-        parentId: id,
-        depth: 1,
-        maxDepth: MAX_NESTED_DEPTH,
-        nextRandom,
-      }),
-    };
-  });
 }
 
 function countComments(comments: CommentItem[]): number {
@@ -167,26 +83,6 @@ function CommentThread({ comments, depth = 0 }: CommentThreadProps) {
       ))}
     </div>
   );
-}
-
-function buildSyntheticPost(postId: string): PostItem | null {
-  if (!postId.startsWith("synthetic-")) return null;
-
-  const parts = postId.split("-");
-  if (parts.length < 3) return null;
-
-  const rank = Number(parts[parts.length - 1]) || 1;
-  const community = parts.slice(1, parts.length - 1).join("-");
-
-  return {
-    id: postId,
-    title: `Trending in ${community} #${rank}`,
-    content:
-      "This is a seeded high-volume preview post representing active community traffic.",
-    createdAt: `${rank}m ago`,
-    communities: [community],
-    synthetic: true,
-  };
 }
 
 export default function PostDetailPage() {
@@ -225,8 +121,7 @@ export default function PostDetailPage() {
 
   const post = useMemo(() => {
     const found = posts.find((item) => String(item.id) === postId);
-    if (found) return { ...found, synthetic: false };
-    return buildSyntheticPost(postId);
+    return found ?? null;
   }, [posts, postId]);
 
   const comments = useMemo(() => {
@@ -254,24 +149,6 @@ export default function PostDetailPage() {
 
     return post.communities.find((community) => !joinedCommunities.includes(community)) || "";
   }, [post, joinedCommunities]);
-
-  useEffect(() => {
-    if (!postId || !post) return;
-
-    const existing = commentsByPost[postId];
-    if (Array.isArray(existing) && existing.length > 0) {
-      return;
-    }
-
-    const seededComments = buildSeededComments(postId);
-    const nextCommentsByPost = {
-      ...commentsByPost,
-      [postId]: seededComments,
-    };
-
-    setCommentsByPost(nextCommentsByPost);
-    writeJSON(COMMENTS_KEY, nextCommentsByPost);
-  }, [commentsByPost, post, postId]);
 
   const handleAddComment = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();

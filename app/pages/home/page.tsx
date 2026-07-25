@@ -6,6 +6,13 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { useVirtualizer } from "@tanstack/react-virtual";
+import {
+  HiArrowTopRightOnSquare,
+  HiCheckCircle,
+  HiFolderPlus,
+  HiPencilSquare,
+  HiUserPlus,
+} from "react-icons/hi2";
 import { Button, Card, CardBody, Chip, Input, Typography } from "@/app/_types/mtw";
 import { useTheme } from "@/app/_context/theme-context";
 import AppNavbar from "@/app/_components/AppNavbar";
@@ -16,25 +23,6 @@ const POSTS_KEY = "threadforge-posts";
 const COMMUNITIES_KEY = "threadforge-communities";
 const JOINED_COMMUNITIES_KEY = "threadforge-joined-communities";
 const HOME_UI_PREFS_KEY = "threadforge-home-ui-prefs";
-const COMMUNITY_POST_COUNTS_KEY = "threadforge-community-post-counts";
-const SEED_VERSION_KEY = "threadforge-seed-version";
-const SEED_VERSION = "v1-500x1000";
-const SEED_COMMUNITY_COUNT = 500;
-const SEED_USER_POST_COUNT = 500;
-const SEED_POSTS_PER_COMMUNITY = 1000;
-const SYNTHETIC_RENDER_LIMIT = 220;
-const DISCOVER_COMMUNITIES = [
-  "technology",
-  "design",
-  "startups",
-  "gaming",
-  "books",
-  "science",
-  "sports",
-  "movies",
-  "music",
-  "travel",
-];
 
 type PostItem = {
   id: string | number;
@@ -42,58 +30,7 @@ type PostItem = {
   content: string;
   communities?: string[];
   createdAt: string;
-  synthetic?: boolean;
 };
-
-function IconArrowTopRightOnSquare({ className = "" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className} aria-hidden="true">
-      <path d="M14 5h5v5" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M10 14 19 5" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M5 7a2 2 0 0 1 2-2h3" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M19 14v3a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-3" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function IconCheckCircle({ className = "" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className} aria-hidden="true">
-      <circle cx="12" cy="12" r="9" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="m8.5 12 2.5 2.5 4.5-5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function IconFolderPlus({ className = "" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className} aria-hidden="true">
-      <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M12 10v6" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M9 13h6" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function IconPencilSquare({ className = "" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className} aria-hidden="true">
-      <path d="M4 20h4l9.5-9.5a2.1 2.1 0 0 0-3-3L5 17v3Z" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="m13.5 6.5 3 3" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function IconUserPlus({ className = "" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className} aria-hidden="true">
-      <circle cx="9" cy="9" r="3" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M3.5 19a6 6 0 0 1 11 0" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M17 8v6" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M14 11h6" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
 
 function readJSONFromStorage<T>(key: string, fallbackValue: T): T {
   const raw = window.localStorage.getItem(key);
@@ -111,43 +48,6 @@ function writeJSONToStorage(key: string, value: unknown): void {
   window.localStorage.setItem(key, JSON.stringify(value));
 }
 
-function buildSeedData() {
-  const seededCommunities = Array.from(
-    { length: SEED_COMMUNITY_COUNT },
-    (_, index) => `community-${String(index + 1).padStart(3, "0")}`,
-  );
-
-  const seededPosts = Array.from(
-    { length: SEED_USER_POST_COUNT },
-    (_, index) => {
-      const community = seededCommunities[index % seededCommunities.length];
-      return {
-        id: Date.now() + index,
-        title: `Seeded Post ${index + 1}`,
-        content: `This seeded post belongs to ${community} and helps simulate a regular consumer feed view.`,
-        communities: [community],
-        createdAt: new Date(
-          Date.now() - index * 60 * 1000,
-        ).toLocaleString(),
-      };
-    },
-  );
-
-  const seededCommunityPostCounts = seededCommunities.reduce<Record<string, number>>(
-    (accumulator, community) => {
-      accumulator[community] = SEED_POSTS_PER_COMMUNITY;
-      return accumulator;
-    },
-    {},
-  );
-
-  return {
-    seededCommunities,
-    seededPosts,
-    seededCommunityPostCounts,
-  };
-}
-
 export default function HomePage() {
   const router = useRouter();
   const { status } = useSession();
@@ -158,7 +58,6 @@ export default function HomePage() {
   const [communityName, setCommunityName] = useState("");
   const [communities, setCommunities] = useState<string[]>([]);
   const [joinedCommunities, setJoinedCommunities] = useState<string[]>([]);
-  const [communityPostCounts, setCommunityPostCounts] = useState<Record<string, number>>({});
   const [communitySearch, setCommunitySearch] = useState("");
   const [isLeftSidebarOpen, setIsLeftSidebarOpen] = useState(true);
   const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(true);
@@ -186,9 +85,9 @@ export default function HomePage() {
   }, [posts.length]);
 
   const availableCommunities = useMemo(() => {
-    const combined = [...DISCOVER_COMMUNITIES, ...communities];
+    const combined = [...communities, ...joinedCommunities];
     return [...new Set(combined.map((item) => item.trim()).filter(Boolean))];
-  }, [communities]);
+  }, [communities, joinedCommunities]);
 
   const joinedCommunitiesSet = useMemo(
     () => new Set(joinedCommunities),
@@ -213,53 +112,11 @@ export default function HomePage() {
     );
   }, [posts, activeFeedCommunities]);
 
-  const syntheticFeedTotal = useMemo(() => {
-    if (activeFeedCommunities.length === 0) {
-      return 0;
-    }
-
-    return activeFeedCommunities.reduce((sum, community) => {
-      return sum + (communityPostCounts[community] ?? 0);
-    }, 0);
-  }, [activeFeedCommunities, communityPostCounts]);
-
-  const syntheticFeedSamples = useMemo(() => {
-    if (activeFeedCommunities.length === 0) {
-      return [];
-    }
-
-    const samples = [];
-    for (let i = 0; i < SYNTHETIC_RENDER_LIMIT; i += 1) {
-      const community =
-        activeFeedCommunities[i % activeFeedCommunities.length] ??
-        activeFeedCommunities[0];
-      const rank = Math.floor(i / activeFeedCommunities.length) + 1;
-
-      samples.push({
-        id: `synthetic-${community}-${rank}`,
-        title: `Trending in ${community} #${rank}`,
-        content:
-          "Community highlight: this is a seeded high-volume post preview for consumer feed simulation.",
-        communities: [community],
-        createdAt: `${rank}m ago`,
-        synthetic: true,
-      });
-    }
-
-    return samples;
-  }, [activeFeedCommunities]);
-
-  const displayFeedPosts = useMemo(() => {
-    return [...filteredPosts, ...syntheticFeedSamples].slice(
-      0,
-      SYNTHETIC_RENDER_LIMIT,
-    );
-  }, [filteredPosts, syntheticFeedSamples]);
+  const displayFeedPosts = useMemo(() => filteredPosts, [filteredPosts]);
 
   const filteredPostCountLabel = useMemo(() => {
-    const totalCount = syntheticFeedTotal + filteredPosts.length;
-    return `${totalCount.toLocaleString()} posts in feed`;
-  }, [syntheticFeedTotal, filteredPosts.length]);
+    return `${filteredPosts.length.toLocaleString()} posts in feed`;
+  }, [filteredPosts.length]);
 
   const deferredCommunitySearch = useDeferredValue(communitySearch);
   const normalizedCommunitySearch = useMemo(() => {
@@ -331,15 +188,10 @@ export default function HomePage() {
       const parsedPosts = readJSONFromStorage(POSTS_KEY, []);
       const parsedCommunities = readJSONFromStorage(COMMUNITIES_KEY, []);
       const parsedJoined = readJSONFromStorage(JOINED_COMMUNITIES_KEY, []);
-      const parsedCommunityPostCounts = readJSONFromStorage<Record<string, number>>(
-        COMMUNITY_POST_COUNTS_KEY,
-        {},
-      );
 
       setPosts(Array.isArray(parsedPosts) ? parsedPosts : []);
       setCommunities(Array.isArray(parsedCommunities) ? parsedCommunities : []);
       setJoinedCommunities(Array.isArray(parsedJoined) ? parsedJoined : []);
-      setCommunityPostCounts(parsedCommunityPostCounts);
     };
 
     const hydrateUiPrefs = () => {
@@ -369,37 +221,7 @@ export default function HomePage() {
 
     hydrateUiPrefs();
 
-    if (window.localStorage.getItem(SEED_VERSION_KEY) !== SEED_VERSION) {
-      const seedAndHydrate = () => {
-        if (cancelled) return;
-
-        const {
-          seededCommunities,
-          seededPosts,
-          seededCommunityPostCounts,
-        } = buildSeedData();
-
-        writeJSONToStorage(COMMUNITIES_KEY, seededCommunities);
-        writeJSONToStorage(JOINED_COMMUNITIES_KEY, seededCommunities);
-        writeJSONToStorage(POSTS_KEY, seededPosts);
-        writeJSONToStorage(COMMUNITY_POST_COUNTS_KEY, seededCommunityPostCounts);
-        window.localStorage.setItem(SEED_VERSION_KEY, SEED_VERSION);
-
-        if (cancelled) return;
-        setPosts(seededPosts);
-        setCommunities(seededCommunities);
-        setJoinedCommunities(seededCommunities);
-        setCommunityPostCounts(seededCommunityPostCounts);
-      };
-
-      if (typeof window.requestIdleCallback === "function") {
-        idleId = window.requestIdleCallback(seedAndHydrate, { timeout: 350 });
-      } else {
-        timeoutId = setTimeout(seedAndHydrate, 0);
-      }
-    } else {
-      hydrateFromStorage();
-    }
+    hydrateFromStorage();
 
     return () => {
       cancelled = true;
@@ -512,7 +334,7 @@ export default function HomePage() {
       <Card className="border border-slate-200 shadow-none">
         <CardBody className="space-y-4 p-5">
           <Typography variant="h5" className="inline-flex items-center gap-2 text-blue-gray-900">
-            <IconUserPlus className="h-5 w-5" />
+            <HiUserPlus className="h-5 w-5" />
             Join Communities
           </Typography>
 
@@ -555,7 +377,7 @@ export default function HomePage() {
                             className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-blue-gray-700 hover:bg-slate-100"
                           >
                             Open
-                            <IconArrowTopRightOnSquare className="h-3.5 w-3.5" />
+                            <HiArrowTopRightOnSquare className="h-4 w-4" />
                           </Link>
                           <Button
                             size="sm"
@@ -613,7 +435,7 @@ export default function HomePage() {
         <Card className="border border-slate-200 shadow-none">
           <CardBody className="space-y-4 p-5">
             <Typography variant="h5" className="inline-flex items-center gap-2 text-blue-gray-900">
-              <IconFolderPlus className="h-5 w-5" />
+              <HiFolderPlus className="h-5 w-5" />
               Create Community
             </Typography>
 
@@ -804,7 +626,7 @@ export default function HomePage() {
                     <Card className="border border-dashed border-slate-300 shadow-none">
                       <CardBody className="space-y-3">
                         <Typography variant="h6" className="inline-flex items-center gap-2 text-blue-gray-900">
-                          <IconPencilSquare className="h-5 w-5" />
+                          <HiPencilSquare className="h-5 w-5" />
                           No posts in this feed
                         </Typography>
                         <Typography className="text-slate-600">
@@ -868,12 +690,6 @@ export default function HomePage() {
                                     {post.content}
                                   </Typography>
 
-                                  {post.synthetic ? (
-                                    <Typography variant="small" className="text-slate-500">
-                                      Seeded feed item for high-volume consumer simulation.
-                                    </Typography>
-                                  ) : null}
-
                                   <div className="flex flex-wrap items-center gap-2 border-t border-slate-200 pt-3">
                                     <Link href={`/pages/post/${encodeURIComponent(String(post.id))}`}>
                                       <Button size="sm" variant="outlined" color="blue-gray" className="rounded-lg">
@@ -890,7 +706,7 @@ export default function HomePage() {
                                       Share
                                     </Button>
                                     <Typography variant="small" className="ml-auto inline-flex items-center gap-1 text-slate-500">
-                                      <IconCheckCircle className="h-4 w-4" />
+                                      <HiCheckCircle className="h-4 w-4" />
                                       Posted in {Array.isArray(post.communities) ? post.communities.length : 0} communities
                                     </Typography>
                                   </div>

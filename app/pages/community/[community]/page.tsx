@@ -13,8 +13,6 @@ import { isAuthenticated } from "@/app/_utils/auth";
 
 const POSTS_KEY = "threadforge-posts";
 const JOINED_COMMUNITIES_KEY = "threadforge-joined-communities";
-const COMMUNITY_POST_COUNTS_KEY = "threadforge-community-post-counts";
-const SYNTHETIC_RENDER_LIMIT = 150;
 const INITIAL_FEED_RENDER_COUNT = 30;
 const FEED_LOAD_STEP = 30;
 
@@ -24,7 +22,6 @@ type PostItem = {
   content: string;
   communities?: string[];
   createdAt: string;
-  synthetic?: boolean;
 };
 
 export default function CommunityPage() {
@@ -35,7 +32,6 @@ export default function CommunityPage() {
   const [postTitle, setPostTitle] = useState("");
   const [postContent, setPostContent] = useState("");
   const [joinedCommunities, setJoinedCommunities] = useState<string[]>([]);
-  const [communityPostCounts, setCommunityPostCounts] = useState<Record<string, number>>({});
   const [searchQuery, setSearchQuery] = useState("");
   const [visibleCount, setVisibleCount] = useState(INITIAL_FEED_RENDER_COUNT);
 
@@ -82,19 +78,6 @@ export default function CommunityPage() {
       }
     }
 
-    const savedCommunityPostCounts = window.localStorage.getItem(
-      COMMUNITY_POST_COUNTS_KEY,
-    );
-    if (savedCommunityPostCounts) {
-      try {
-        const parsedCounts = JSON.parse(savedCommunityPostCounts);
-        if (parsedCounts && typeof parsedCounts === "object") {
-          setCommunityPostCounts(parsedCounts);
-        }
-      } catch {
-        setCommunityPostCounts({});
-      }
-    }
   }, [router, status]);
 
   const authoredPosts = useMemo(() => {
@@ -105,35 +88,19 @@ export default function CommunityPage() {
     );
   }, [posts, communityName]);
 
-  const syntheticCount = communityPostCounts[communityName] ?? 0;
-  const totalCount = authoredPosts.length + syntheticCount;
+  const totalCount = authoredPosts.length;
   const isJoined = joinedCommunities.includes(communityName);
   const postComposerDisabled =
     !isJoined || postTitle.trim().length === 0 || postContent.trim().length === 0;
 
-  const syntheticSamples = useMemo(() => {
-    const count = Math.min(SYNTHETIC_RENDER_LIMIT, syntheticCount);
-    return Array.from({ length: count }, (_, index) => ({
-      id: `synthetic-${communityName}-${index + 1}`,
-      title: `Trending in ${communityName} #${index + 1}`,
-      content:
-        "Seeded preview post for high-volume consumer experience in this community.",
-      createdAt: `${index + 1}m ago`,
-      synthetic: true,
-    }));
-  }, [communityName, syntheticCount]);
-
   const feedItems = useMemo(() => {
-    const authored = authoredPosts.map((post) => ({
+    return authoredPosts.map((post) => ({
       id: post.id,
       title: post.title,
       content: post.content,
       createdAt: post.createdAt,
-      synthetic: false,
     }));
-
-    return [...authored, ...syntheticSamples].slice(0, SYNTHETIC_RENDER_LIMIT);
-  }, [authoredPosts, syntheticSamples]);
+  }, [authoredPosts]);
 
   const filteredFeedItems = useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLowerCase();
@@ -235,7 +202,7 @@ export default function CommunityPage() {
               {communityName}
             </Typography>
             <Typography className="text-slate-600">
-              Community feed preview with authored posts and seeded high-volume consumer content.
+              Community feed with authored posts.
             </Typography>
             <div className="pt-2">
               <Input
@@ -321,11 +288,6 @@ export default function CommunityPage() {
                     </Typography>
                   </div>
                   <Typography className="text-slate-700">{item.content}</Typography>
-                  {item.synthetic ? (
-                    <Typography variant="small" className="text-slate-500">
-                      Seeded preview item
-                    </Typography>
-                  ) : null}
                   <div className="flex items-center gap-2 border-t border-slate-200 pt-2">
                     <Link href={`/pages/post/${encodeURIComponent(String(item.id))}`}>
                       <Button size="sm" variant="outlined" color="blue-gray" className="rounded-lg">
