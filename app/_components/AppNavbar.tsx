@@ -3,10 +3,11 @@
 import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import { signOut } from "next-auth/react";
 import { Button, Typography } from "@/app/_types/mtw";
 import { useTheme } from "@/app/_context/theme-context";
-import { clearAuthSession } from "@/app/_utils/auth";
+import { USER_PROFILE_KEY, clearAuthSession } from "@/app/_utils/auth";
 
 type AppNavbarProps = {
   subtitle?: string;
@@ -62,9 +63,38 @@ export default function AppNavbar({
   profileMenuContent = null,
   maxWidthClassName = "max-w-7xl",
 }: AppNavbarProps) {
+  const { data: session } = useSession();
   const { theme, setTheme } = useTheme();
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const [localUser, setLocalUser] = useState<{
+    name?: string | null;
+    email?: string | null;
+    image?: string | null;
+  } | null>(null);
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const raw = window.localStorage.getItem(USER_PROFILE_KEY);
+    if (!raw) {
+      setLocalUser(null);
+      return;
+    }
+
+    try {
+      const parsed = JSON.parse(raw) as {
+        name?: string | null;
+        email?: string | null;
+        image?: string | null;
+      };
+      setLocalUser(parsed);
+    } catch {
+      setLocalUser(null);
+    }
+  }, [session?.user?.name, session?.user?.email, session?.user?.image]);
 
   useEffect(() => {
     if (!isProfileMenuOpen) {
@@ -96,6 +126,10 @@ export default function AppNavbar({
     clearAuthSession();
     await signOut({ callbackUrl: "/" });
   };
+
+  const profileName = session?.user?.name ?? localUser?.name ?? "Profile";
+  const profileEmail = session?.user?.email ?? localUser?.email ?? "";
+  const profileImage = session?.user?.image ?? localUser?.image ?? "";
 
   return (
     <nav className="sticky top-0 z-20 border-b border-slate-200/70 bg-white/85 backdrop-blur">
@@ -132,8 +166,17 @@ export default function AppNavbar({
               onClick={() => setIsProfileMenuOpen((prev) => !prev)}
             >
               <span className="inline-flex items-center gap-2">
-                <IconUserCircle className="h-7 w-7" />
-                <span className="hidden text-sm font-medium sm:inline">Profile</span>
+                {profileImage ? (
+                  <img
+                    src={profileImage}
+                    alt={profileName}
+                    className="h-7 w-7 rounded-full border border-slate-200 object-cover"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <IconUserCircle className="h-7 w-7" />
+                )}
+                <span className="hidden max-w-36 truncate text-sm font-medium sm:inline">{profileName}</span>
               </span>
             </Button>
 
@@ -144,6 +187,17 @@ export default function AppNavbar({
                 aria-label="Profile menu"
                 className="absolute right-0 z-30 mt-2 w-56 rounded-xl border border-slate-200 bg-white p-2 shadow-lg"
               >
+                <div className="mb-2 rounded-lg bg-slate-50 px-3 py-2">
+                  <Typography variant="small" className="truncate text-sm font-semibold text-blue-gray-900">
+                    {profileName}
+                  </Typography>
+                  {profileEmail ? (
+                    <Typography variant="small" className="truncate text-xs text-slate-500">
+                      {profileEmail}
+                    </Typography>
+                  ) : null}
+                </div>
+
                 <Typography
                   variant="small"
                   className="px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-slate-600"
