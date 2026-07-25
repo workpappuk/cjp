@@ -1,6 +1,19 @@
 "use client";
 
-import { Button, Input, Typography } from "@material-tailwind/react";
+import type { ChangeEvent, FormEvent } from "react";
+import { Button, Input, Typography } from "./mtw";
+
+type CommentComposerProps = {
+  commentText: string;
+  onCommentTextChange: (value: string) => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  canComment: boolean;
+  submitDisabled: boolean;
+  joinPrompt?: string;
+  joinButtonLabel?: string;
+  onJoin?: () => void;
+  color?: string;
+};
 
 export default function CommentComposer({
   commentText,
@@ -12,13 +25,15 @@ export default function CommentComposer({
   joinButtonLabel,
   onJoin,
   color = "blue",
-}) {
+}: CommentComposerProps) {
   return (
     <form className="space-y-3" onSubmit={onSubmit}>
       <Input
         label="Add a comment"
         value={commentText}
-        onChange={(event) => onCommentTextChange(event.target.value)}
+        onChange={(event: ChangeEvent<HTMLInputElement>) =>
+          onCommentTextChange(event.target.value)
+        }
         crossOrigin={undefined}
         color={color}
         disabled={!canComment}

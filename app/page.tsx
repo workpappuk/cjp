@@ -1,17 +1,9 @@
 "use client";
 
+import type { Theme } from "./_context/theme-context";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-
-import {
-  Button,
-  Card,
-  CardBody,
-  Chip,
-  Option,
-  Select,
-  Typography,
-} from "@material-tailwind/react";
+import { Button, Card, CardBody, Chip, Option, Select, Typography } from "./_components/mtw";
 import { FcGoogle } from "react-icons/fc";
 import {
   HiBolt,
@@ -24,13 +16,25 @@ import {
 } from "react-icons/hi2";
 import { useTheme } from "./_context/theme-context";
 
+
 const AUTH_KEY = "threadforge-auth";
+
+type AccentTheme = {
+  blobA: string;
+  blobB: string;
+  badgeBorder: string;
+  badgeText: string;
+  headingText: string;
+  chipColor: string;
+  selectColor: string;
+  buttonColor: string;
+};
 
 export default function MarketingPage() {
   const router = useRouter();
   const { theme, setTheme } = useTheme();
 
-  const accentThemes = {
+  const accentThemes: Record<Theme, AccentTheme> = {
     orange: {
       blobA: "bg-orange-300/30",
       blobB: "bg-sky-300/20",
@@ -67,13 +71,13 @@ export default function MarketingPage() {
 
   useEffect(() => {
     if (window.localStorage.getItem(AUTH_KEY) === "google") {
-      router.replace("/pages/home");
+      router.replace("/pages/pages/home");
     }
   }, [router]);
 
   const handleGoogleLogin = () => {
     window.localStorage.setItem(AUTH_KEY, "google");
-    router.push("/pages/home");
+    router.push("/pages/pages/home");
   };
 
   return (
@@ -93,7 +97,7 @@ export default function MarketingPage() {
             <Select
               label="Theme"
               value={theme}
-              onChange={(value) => setTheme(value ?? "orange")}
+              onChange={(value: string | undefined) => setTheme(value ?? "orange")}
               color={activeTheme.selectColor}
             >
               <Option value="orange">

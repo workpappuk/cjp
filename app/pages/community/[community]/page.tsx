@@ -1,16 +1,10 @@
 "use client";
 
+import type { ChangeEvent, FormEvent } from "react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import {
-  Button,
-  Card,
-  CardBody,
-  Chip,
-  Input,
-  Typography,
-} from "@material-tailwind/react";
+import { Button, Card, CardBody, Chip, Input, Typography } from "../../../_components/mtw";
 import { HiArrowLeft, HiCheckCircle, HiUserPlus } from "react-icons/hi2";
 import AppNavbar from "../../../_components/AppNavbar";
 import PostComposer from "../../../_components/PostComposer";
@@ -23,14 +17,23 @@ const SYNTHETIC_RENDER_LIMIT = 150;
 const INITIAL_FEED_RENDER_COUNT = 30;
 const FEED_LOAD_STEP = 30;
 
+type PostItem = {
+  id: string | number;
+  title: string;
+  content: string;
+  communities?: string[];
+  createdAt: string;
+  synthetic?: boolean;
+};
+
 export default function CommunityPage() {
   const router = useRouter();
   const params = useParams();
-  const [posts, setPosts] = useState([]);
+  const [posts, setPosts] = useState<PostItem[]>([]);
   const [postTitle, setPostTitle] = useState("");
   const [postContent, setPostContent] = useState("");
-  const [joinedCommunities, setJoinedCommunities] = useState([]);
-  const [communityPostCounts, setCommunityPostCounts] = useState({});
+  const [joinedCommunities, setJoinedCommunities] = useState<string[]>([]);
+  const [communityPostCounts, setCommunityPostCounts] = useState<Record<string, number>>({});
   const [searchQuery, setSearchQuery] = useState("");
   const [visibleCount, setVisibleCount] = useState(INITIAL_FEED_RENDER_COUNT);
 
@@ -146,7 +149,7 @@ export default function CommunityPage() {
     setVisibleCount(INITIAL_FEED_RENDER_COUNT);
   }, [communityName, searchQuery]);
 
-  const handleCreatePost = (event) => {
+  const handleCreatePost = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!isJoined || postComposerDisabled) return;
 
@@ -200,7 +203,7 @@ export default function CommunityPage() {
           </>
         )}
         rightContent={(
-          <Link href="/home" className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-blue-gray-700 hover:bg-slate-100">
+          <Link href="/pages/home" className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-blue-gray-700 hover:bg-slate-100">
             <HiArrowLeft aria-hidden="true" />
             Back to Home
           </Link>
@@ -221,7 +224,9 @@ export default function CommunityPage() {
               <Input
                 label="Search posts in this community"
                 value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
+                onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                  setSearchQuery(event.target.value)
+                }
                 crossOrigin={undefined}
                 color="blue"
               />

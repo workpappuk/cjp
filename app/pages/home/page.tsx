@@ -1,17 +1,10 @@
 "use client";
 
+import type { ChangeEvent, FormEvent } from "react";
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import {
-  Button,
-  Card,
-  CardBody,
-  Chip,
-  IconButton,
-  Input,
-  Typography,
-} from "@material-tailwind/react";
+import { Button, Card, CardBody, Chip, IconButton, Input, Typography } from "../../_components/mtw";
 import {
   HiArrowTopRightOnSquare,
   HiBars3,
@@ -53,7 +46,16 @@ const DISCOVER_COMMUNITIES = [
   "travel",
 ];
 
-function readJSONFromStorage(key, fallbackValue) {
+type PostItem = {
+  id: string | number;
+  title: string;
+  content: string;
+  communities?: string[];
+  createdAt: string;
+  synthetic?: boolean;
+};
+
+function readJSONFromStorage<T>(key: string, fallbackValue: T): T {
   const raw = window.localStorage.getItem(key);
   if (!raw) return fallbackValue;
 
@@ -65,7 +67,7 @@ function readJSONFromStorage(key, fallbackValue) {
   }
 }
 
-function writeJSONToStorage(key, value) {
+function writeJSONToStorage(key: string, value: unknown): void {
   window.localStorage.setItem(key, JSON.stringify(value));
 }
 
@@ -74,11 +76,11 @@ export default function HomePage() {
   const { theme } = useTheme();
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
-  const [posts, setPosts] = useState([]);
+  const [posts, setPosts] = useState<PostItem[]>([]);
   const [communityName, setCommunityName] = useState("");
-  const [communities, setCommunities] = useState([]);
-  const [joinedCommunities, setJoinedCommunities] = useState([]);
-  const [communityPostCounts, setCommunityPostCounts] = useState({});
+  const [communities, setCommunities] = useState<string[]>([]);
+  const [joinedCommunities, setJoinedCommunities] = useState<string[]>([]);
+  const [communityPostCounts, setCommunityPostCounts] = useState<Record<string, number>>({});
   const [communitySearch, setCommunitySearch] = useState("");
   const [discoverVisibleCount, setDiscoverVisibleCount] = useState(
     COMMUNITY_PAGE_SIZE,
@@ -86,7 +88,7 @@ export default function HomePage() {
   const [feedVisibleCount, setFeedVisibleCount] = useState(INITIAL_FEED_VISIBLE);
   const [isLeftSidebarOpen, setIsLeftSidebarOpen] = useState(true);
   const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(true);
-  const [activeComposer, setActiveComposer] = useState("post");
+  const [activeComposer, setActiveComposer] = useState<"post" | "community">("post");
 
   const buttonColors = {
     orange: "orange",
@@ -239,7 +241,7 @@ export default function HomePage() {
         },
       );
 
-      const seededCommunityPostCounts = seededCommunities.reduce(
+      const seededCommunityPostCounts = seededCommunities.reduce<Record<string, number>>(
         (accumulator, community) => {
           accumulator[community] = SEED_POSTS_PER_COMMUNITY;
           return accumulator;
@@ -257,7 +259,7 @@ export default function HomePage() {
     const parsedPosts = readJSONFromStorage(POSTS_KEY, []);
     const parsedCommunities = readJSONFromStorage(COMMUNITIES_KEY, []);
     const parsedJoined = readJSONFromStorage(JOINED_COMMUNITIES_KEY, []);
-    const parsedCommunityPostCounts = readJSONFromStorage(
+    const parsedCommunityPostCounts = readJSONFromStorage<Record<string, number>>(
       COMMUNITY_POST_COUNTS_KEY,
       {},
     );
@@ -265,11 +267,7 @@ export default function HomePage() {
     setPosts(Array.isArray(parsedPosts) ? parsedPosts : []);
     setCommunities(Array.isArray(parsedCommunities) ? parsedCommunities : []);
     setJoinedCommunities(Array.isArray(parsedJoined) ? parsedJoined : []);
-    setCommunityPostCounts(
-      parsedCommunityPostCounts && typeof parsedCommunityPostCounts === "object"
-        ? parsedCommunityPostCounts
-        : {},
-    );
+    setCommunityPostCounts(parsedCommunityPostCounts);
 
     const savedUiPrefs = window.localStorage.getItem(HOME_UI_PREFS_KEY);
     if (savedUiPrefs) {
@@ -306,7 +304,7 @@ export default function HomePage() {
     );
   }, [isLeftSidebarOpen, isRightSidebarOpen, activeComposer]);
 
-  const handleCreateCommunity = (event) => {
+  const handleCreateCommunity = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (communityDisabled) return;
 
@@ -336,7 +334,7 @@ export default function HomePage() {
     setCommunityName("");
   };
 
-  const handleToggleJoinCommunity = (name) => {
+  const handleToggleJoinCommunity = (name: string) => {
     const isJoined = joinedCommunitiesSet.has(name);
     const nextJoined = isJoined
       ? joinedCommunities.filter((item) => item !== name)
@@ -350,7 +348,7 @@ export default function HomePage() {
     }
   };
 
-  const handleCreatePost = (event) => {
+  const handleCreatePost = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (disabled) return;
 
@@ -426,7 +424,9 @@ export default function HomePage() {
                   <Input
                     label="Search communities"
                     value={communitySearch}
-                    onChange={(event) => setCommunitySearch(event.target.value)}
+                    onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                      setCommunitySearch(event.target.value)
+                    }
                     crossOrigin={undefined}
                     color={buttonColor}
                   />
@@ -663,7 +663,9 @@ export default function HomePage() {
                       <Input
                         label="Community name"
                         value={communityName}
-                        onChange={(event) => setCommunityName(event.target.value)}
+                        onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                          setCommunityName(event.target.value)
+                        }
                         crossOrigin={undefined}
                         color={buttonColor}
                       />

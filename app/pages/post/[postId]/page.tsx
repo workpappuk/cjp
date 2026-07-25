@@ -1,14 +1,10 @@
 "use client";
 
+import type { FormEvent } from "react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import {
-  Card,
-  CardBody,
-  Chip,
-  Typography,
-} from "@material-tailwind/react";
+import { Card, CardBody, Chip, Typography } from "../../../_components/mtw";
 import { HiArrowLeft, HiChatBubbleBottomCenterText } from "react-icons/hi2";
 import AppNavbar from "../../../_components/AppNavbar";
 import CommentComposer from "../../../_components/CommentComposer";
@@ -32,7 +28,37 @@ const COMMENT_MESSAGE_POOL = [
   "Solid summary. Looking forward to follow-up updates.",
 ];
 
-function readJSON(key, fallback) {
+type PostItem = {
+  id: string | number;
+  title: string;
+  content: string;
+  communities?: string[];
+  createdAt: string;
+  synthetic?: boolean;
+};
+
+type CommentItem = {
+  id: string;
+  text: string;
+  createdAt: string;
+  replies: CommentItem[];
+};
+
+type SeedRandom = () => number;
+
+type NestedRepliesOptions = {
+  parentId: string;
+  depth: number;
+  maxDepth: number;
+  nextRandom: SeedRandom;
+};
+
+type CommentThreadProps = {
+  comments: CommentItem[];
+  depth?: number;
+};
+
+function readJSON<T>(key: string, fallback: T): T {
   const raw = window.localStorage.getItem(key);
   if (!raw) return fallback;
 
@@ -44,11 +70,11 @@ function readJSON(key, fallback) {
   }
 }
 
-function writeJSON(key, value) {
+function writeJSON(key: string, value: unknown): void {
   window.localStorage.setItem(key, JSON.stringify(value));
 }
 
-function createSeededNumberGenerator(seedText) {
+function createSeededNumberGenerator(seedText: string): SeedRandom {
   let seed = 7;
   for (let i = 0; i < seedText.length; i += 1) {
     seed = (seed * 31 + seedText.charCodeAt(i)) % 2147483647;
@@ -62,12 +88,12 @@ function createSeededNumberGenerator(seedText) {
   };
 }
 
-function randomMessage(nextRandom) {
+function randomMessage(nextRandom: SeedRandom): string {
   const index = Math.floor(nextRandom() * COMMENT_MESSAGE_POOL.length);
   return COMMENT_MESSAGE_POOL[index] ?? COMMENT_MESSAGE_POOL[0];
 }
 
-function buildNestedReplies({ parentId, depth, maxDepth, nextRandom }) {
+function buildNestedReplies({ parentId, depth, maxDepth, nextRandom }: NestedRepliesOptions): CommentItem[] {
   if (depth >= maxDepth) return [];
 
   const replyCount = Math.floor(nextRandom() * 3);
@@ -88,7 +114,7 @@ function buildNestedReplies({ parentId, depth, maxDepth, nextRandom }) {
   });
 }
 
-function buildSeededComments(postId, count = SEEDED_COMMENTS_PER_POST) {
+function buildSeededComments(postId: string, count = SEEDED_COMMENTS_PER_POST): CommentItem[] {
   const nextRandom = createSeededNumberGenerator(postId);
 
   return Array.from({ length: count }, (_, index) => {
@@ -108,7 +134,7 @@ function buildSeededComments(postId, count = SEEDED_COMMENTS_PER_POST) {
   });
 }
 
-function countComments(comments) {
+function countComments(comments: CommentItem[]): number {
   return comments.reduce((total, comment) => {
     const nested = Array.isArray(comment.replies)
       ? countComments(comment.replies)
@@ -117,7 +143,7 @@ function countComments(comments) {
   }, 0);
 }
 
-function CommentThread({ comments, depth = 0 }) {
+function CommentThread({ comments, depth = 0 }: CommentThreadProps) {
   return (
     <div className="space-y-2">
       {comments.map((comment) => (
@@ -142,7 +168,7 @@ function CommentThread({ comments, depth = 0 }) {
   );
 }
 
-function buildSyntheticPost(postId) {
+function buildSyntheticPost(postId: string): PostItem | null {
   if (!postId.startsWith("synthetic-")) return null;
 
   const parts = postId.split("-");
@@ -165,9 +191,9 @@ function buildSyntheticPost(postId) {
 export default function PostDetailPage() {
   const router = useRouter();
   const params = useParams();
-  const [posts, setPosts] = useState([]);
-  const [commentsByPost, setCommentsByPost] = useState({});
-  const [joinedCommunities, setJoinedCommunities] = useState([]);
+  const [posts, setPosts] = useState<PostItem[]>([]);
+  const [commentsByPost, setCommentsByPost] = useState<Record<string, CommentItem[]>>({});
+  const [joinedCommunities, setJoinedCommunities] = useState<string[]>([]);
   const [commentText, setCommentText] = useState("");
 
   const postId = useMemo(() => {
@@ -181,15 +207,13 @@ export default function PostDetailPage() {
       return;
     }
 
-    const parsedPosts = readJSON(POSTS_KEY, []);
+    const parsedPosts = readJSON<PostItem[]>(POSTS_KEY, []);
     setPosts(Array.isArray(parsedPosts) ? parsedPosts : []);
 
-    const parsedComments = readJSON(COMMENTS_KEY, {});
-    setCommentsByPost(
-      parsedComments && typeof parsedComments === "object" ? parsedComments : {},
-    );
+    const parsedComments = readJSON<Record<string, CommentItem[]>>(COMMENTS_KEY, {});
+    setCommentsByPost(parsedComments);
 
-    const parsedJoined = readJSON(JOINED_COMMUNITIES_KEY, []);
+    const parsedJoined = readJSON<string[]>(JOINED_COMMUNITIES_KEY, []);
     setJoinedCommunities(Array.isArray(parsedJoined) ? parsedJoined : []);
   }, [router]);
 
@@ -243,7 +267,7 @@ export default function PostDetailPage() {
     writeJSON(COMMENTS_KEY, nextCommentsByPost);
   }, [commentsByPost, post, postId]);
 
-  const handleAddComment = (event) => {
+  const handleAddComment = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!canComment) return;
 
@@ -285,7 +309,7 @@ export default function PostDetailPage() {
           maxWidthClassName="max-w-4xl"
           rightContent={(
             <Link
-              href="/home"
+              href="/pages/home"
               className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-blue-gray-700 hover:bg-slate-100"
             >
               <HiArrowLeft aria-hidden="true" />
@@ -313,7 +337,7 @@ export default function PostDetailPage() {
         maxWidthClassName="max-w-4xl"
         rightContent={(
           <Link
-            href="/home"
+            href="/pages/home"
             className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-blue-gray-700 hover:bg-slate-100"
           >
             <HiArrowLeft aria-hidden="true" />

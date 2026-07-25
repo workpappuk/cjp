@@ -1,15 +1,9 @@
 "use client";
 
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  Button,
-  Menu,
-  MenuHandler,
-  MenuItem,
-  MenuList,
-  Typography,
-} from "@material-tailwind/react";
+import { Button, Menu, MenuHandler, MenuItem, MenuList, Typography } from "./mtw";
 import {
   HiArrowRightOnRectangle,
   HiCheck,
@@ -20,12 +14,19 @@ import { useTheme } from "../_context/theme-context";
 
 const AUTH_KEY = "threadforge-auth";
 
+type AppNavbarProps = {
+  subtitle?: string;
+  centerContent?: ReactNode;
+  rightContent?: ReactNode;
+  maxWidthClassName?: string;
+};
+
 export default function AppNavbar({
   subtitle = "Community control center",
   centerContent = null,
   rightContent = null,
   maxWidthClassName = "max-w-7xl",
-}) {
+}: AppNavbarProps) {
   const router = useRouter();
   const { theme, setTheme } = useTheme();
 
@@ -39,7 +40,7 @@ export default function AppNavbar({
       <div
         className={`mx-auto flex w-full items-center justify-between gap-3 px-6 py-3 sm:px-10 lg:px-16 ${maxWidthClassName}`}
       >
-        <Link href="/home" className="flex items-center gap-3 text-blue-gray-900">
+        <Link href="/pages/home" className="flex items-center gap-3 text-blue-gray-900">
           <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white">
             <HiGlobeAlt className="text-lg" aria-hidden="true" />
           </span>

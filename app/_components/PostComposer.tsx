@@ -1,6 +1,23 @@
 "use client";
 
-import { Button, Input, Typography } from "@material-tailwind/react";
+import type { ChangeEvent, FormEvent } from "react";
+import { Button, Input, Typography } from "./mtw";
+
+type PostComposerProps = {
+  heading?: string;
+  title: string;
+  content: string;
+  onTitleChange: (value: string) => void;
+  onContentChange: (value: string) => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  disabled: boolean;
+  buttonLabel?: string;
+  helperText?: string;
+  color?: string;
+  contentLabel?: string;
+  contentPlaceholder?: string;
+  contentRows?: number;
+};
 
 export default function PostComposer({
   heading,
@@ -16,7 +33,7 @@ export default function PostComposer({
   contentLabel = "Post content",
   contentPlaceholder = "Share your thoughts with the community...",
   contentRows = 5,
-}) {
+}: PostComposerProps) {
   return (
     <div className="space-y-4">
       {heading ? (
@@ -29,7 +46,7 @@ export default function PostComposer({
         <Input
           label="Post title"
           value={title}
-          onChange={(event) => onTitleChange(event.target.value)}
+          onChange={(event: ChangeEvent<HTMLInputElement>) => onTitleChange(event.target.value)}
           crossOrigin={undefined}
           color={color}
         />
@@ -43,7 +60,7 @@ export default function PostComposer({
             rows={contentRows}
             placeholder={contentPlaceholder}
             value={content}
-            onChange={(event) => onContentChange(event.target.value)}
+            onChange={(event: ChangeEvent<HTMLTextAreaElement>) => onContentChange(event.target.value)}
           />
         </div>
 

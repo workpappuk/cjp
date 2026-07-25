@@ -2,6 +2,7 @@
 
 import {
   createContext,
+  type PropsWithChildren,
   useCallback,
   useContext,
   useEffect,
@@ -10,18 +11,24 @@ import {
 } from "react";
 
 const THEME_KEY = "threadforge-theme";
-const VALID_THEMES = ["orange", "emerald", "sky"];
+const VALID_THEMES = ["orange", "emerald", "sky"] as const;
+export type Theme = (typeof VALID_THEMES)[number];
 
-const ThemeContext = createContext(null);
+type ThemeContextValue = {
+  theme: Theme;
+  setTheme: (nextTheme: string) => void;
+};
 
-function isValidTheme(value) {
-  return VALID_THEMES.includes(value);
+const ThemeContext = createContext<ThemeContextValue | null>(null);
+
+function isValidTheme(value: string): value is Theme {
+  return VALID_THEMES.includes(value as Theme);
 }
 
-export function ThemeProvider({ children }) {
-  const [theme, setThemeState] = useState("orange");
+export function ThemeProvider({ children }: PropsWithChildren) {
+  const [theme, setThemeState] = useState<Theme>("orange");
 
-  const setTheme = useCallback((nextTheme) => {
+  const setTheme = useCallback((nextTheme: string) => {
     setThemeState(isValidTheme(nextTheme) ? nextTheme : "orange");
   }, []);
 
