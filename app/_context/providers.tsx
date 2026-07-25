@@ -1,8 +1,8 @@
 "use client";
 
 import type { PropsWithChildren } from "react";
-import Providers from "@/app/_components/providers";
+import { ThemeProvider } from "@/app/_context/theme-context";
 
-export default function ContextProviders({ children }: PropsWithChildren) {
-	return <Providers>{children}</Providers>;
+export default function Providers({ children }: PropsWithChildren) {
+  return <ThemeProvider>{children}</ThemeProvider>;
 }
