@@ -12,8 +12,8 @@ import {
   Typography,
 } from "@material-tailwind/react";
 import { HiArrowLeft, HiCheckCircle, HiUserPlus } from "react-icons/hi2";
-import AppNavbar from "../../../components/AppNavbar";
-import PostComposer from "../../../components/PostComposer";
+import AppNavbar from "../../../_components/AppNavbar";
+import PostComposer from "../../../_components/PostComposer";
 
 const AUTH_KEY = "threadforge-auth";
 const POSTS_KEY = "threadforge-posts";
@@ -289,7 +289,7 @@ export default function CommunityPage() {
                     </Typography>
                   ) : null}
                   <div className="flex items-center gap-2 border-t border-slate-200 pt-2">
-                    <Link href={`/home/post/${encodeURIComponent(String(item.id))}`}>
+                    <Link href={`/post/${encodeURIComponent(String(item.id))}`}>
                       <Button size="sm" variant="outlined" color="blue-gray" className="rounded-lg">
                         Open post
                       </Button>
@@ -298,7 +298,7 @@ export default function CommunityPage() {
                       Upvote
                     </Button>
                     {isJoined ? (
-                      <Link href={`/home/post/${encodeURIComponent(String(item.id))}`}>
+                      <Link href={`/post/${encodeURIComponent(String(item.id))}`}>
                         <Button
                           size="sm"
                           variant="text"

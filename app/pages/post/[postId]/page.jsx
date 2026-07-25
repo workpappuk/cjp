@@ -10,8 +10,8 @@ import {
   Typography,
 } from "@material-tailwind/react";
 import { HiArrowLeft, HiChatBubbleBottomCenterText } from "react-icons/hi2";
-import AppNavbar from "../../../components/AppNavbar";
-import CommentComposer from "../../../components/CommentComposer";
+import AppNavbar from "../../../_components/AppNavbar";
+import CommentComposer from "../../../_components/CommentComposer";
 
 const AUTH_KEY = "threadforge-auth";
 const POSTS_KEY = "threadforge-posts";
@@ -340,7 +340,7 @@ export default function PostDetailPage() {
                 {post.communities.map((community) => (
                   <Link
                     key={`${post.id}-${community}`}
-                    href={`/home/community/${encodeURIComponent(community)}`}
+                    href={`/community/${encodeURIComponent(community)}`}
                   >
                     <Chip
                       value={community}

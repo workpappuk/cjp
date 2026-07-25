@@ -16,7 +16,7 @@ import {
   HiGlobeAlt,
   HiUserCircle,
 } from "react-icons/hi2";
-import { useTheme } from "../app/theme-context";
+import { useTheme } from "./theme-context";
 
 const AUTH_KEY = "threadforge-auth";
 
