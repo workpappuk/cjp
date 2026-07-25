@@ -21,9 +21,9 @@ import {
   HiXMark,
   HiUserPlus,
 } from "react-icons/hi2";
-import { useTheme } from "../../theme-context";
-import AppNavbar from "../../components/AppNavbar";
-import PostComposer from "../../components/PostComposer";
+import { useTheme } from "../../_components/theme-context";
+import AppNavbar from "../../_components/AppNavbar";
+import PostComposer from "../../_components/PostComposer";
 
 const AUTH_KEY = "threadforge-auth";
 const POSTS_KEY = "threadforge-posts";

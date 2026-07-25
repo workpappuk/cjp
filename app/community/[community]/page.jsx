@@ -12,8 +12,8 @@ import {
   Typography,
 } from "@material-tailwind/react";
 import { HiArrowLeft, HiCheckCircle, HiUserPlus } from "react-icons/hi2";
-import AppNavbar from "../../../components/AppNavbar";
-import PostComposer from "../../../components/PostComposer";
+import AppNavbar from "../../_components/AppNavbar";
+import PostComposer from "../../_components/PostComposer";
 
 const AUTH_KEY = "threadforge-auth";
 const POSTS_KEY = "threadforge-posts";
