@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Button, Menu, MenuHandler, MenuItem, MenuList, Typography } from "./mtw";
+import { Button, Menu, MenuHandler, MenuItem, MenuList, Typography } from "../../types/mtw";
 import {
   HiArrowRightOnRectangle,
   HiCheck,

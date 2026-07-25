@@ -4,7 +4,7 @@ import type { ChangeEvent, FormEvent } from "react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Button, Card, CardBody, Chip, Input, Typography } from "../../../_components/mtw";
+import { Button, Card, CardBody, Chip, Input, Typography } from "../../../../types/mtw";
 import { HiArrowLeft, HiCheckCircle, HiUserPlus } from "react-icons/hi2";
 import AppNavbar from "../../../_components/AppNavbar";
 import PostComposer from "../../../_components/PostComposer";
@@ -182,7 +182,7 @@ export default function CommunityPage() {
   return (
     <main className="min-h-screen bg-slate-50">
       <AppNavbar
-        subtitle={`Community • r/${communityName}`}
+        subtitle={`Community • ${communityName}`}
         maxWidthClassName="max-w-5xl"
         centerContent={(
           <>
@@ -215,7 +215,7 @@ export default function CommunityPage() {
         <Card className="rounded-2xl border border-slate-200 bg-white shadow-none">
           <CardBody className="space-y-2">
             <Typography variant="h3" className="text-blue-gray-900">
-              r/{communityName}
+              {communityName}
             </Typography>
             <Typography className="text-slate-600">
               Community feed preview with authored posts and seeded high-volume consumer content.
@@ -239,7 +239,7 @@ export default function CommunityPage() {
             {!isJoined ? (
               <div className="rounded-xl border border-blue-100 bg-blue-50 p-3">
                 <Typography variant="small" className="text-blue-gray-800">
-                  You need to join r/{communityName} before posting.
+                  You need to join {communityName} before posting.
                 </Typography>
                 <div className="pt-2">
                   <Button size="sm" color="blue" onClick={handleJoinCommunity}>
@@ -249,7 +249,7 @@ export default function CommunityPage() {
               </div>
             ) : (
               <PostComposer
-                heading={`Create Post in r/${communityName}`}
+                heading={`Create Post in ${communityName}`}
                 title={postTitle}
                 content={postContent}
                 onTitleChange={setPostTitle}

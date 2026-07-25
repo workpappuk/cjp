@@ -1,7 +1,7 @@
 "use client";
 
 import type { ChangeEvent, FormEvent } from "react";
-import { Button, Input, Typography } from "./mtw";
+import { Button, Input, Typography } from "../../types/mtw";
 
 type CommentComposerProps = {
   commentText: string;

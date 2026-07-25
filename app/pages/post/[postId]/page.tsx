@@ -4,7 +4,7 @@ import type { FormEvent } from "react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Card, CardBody, Chip, Typography } from "../../../_components/mtw";
+import { Card, CardBody, Chip, Typography } from "../../../../types/mtw";
 import { HiArrowLeft, HiChatBubbleBottomCenterText } from "react-icons/hi2";
 import AppNavbar from "../../../_components/AppNavbar";
 import CommentComposer from "../../../_components/CommentComposer";
