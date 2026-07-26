@@ -19,6 +19,7 @@ import AppNavbar from "@/app/_components/AppNavbar";
 import PostComposer from "@/app/_components/PostComposer";
 import TagsPicker from "@/app/_components/TagsPicker";
 import { isAuthenticated } from "@/app/_utils/auth";
+import { getThemeColorTokens } from "@/app/_utils/theme-colors";
 import { attachTagsToTarget, dedupeTagNames } from "@/app/_utils/tags";
 
 const HOME_UI_PREFS_KEY = "threadforge-home-ui-prefs";
@@ -76,13 +77,7 @@ export default function HomePage() {
     });
   };
 
-  const buttonColors = {
-    orange: "orange",
-    emerald: "green",
-    sky: "blue",
-  };
-
-  const buttonColor = buttonColors[theme] ?? "orange";
+  const { buttonColor, toggle: toggleColors, accent: accentClasses } = getThemeColorTokens(theme);
   const disabled =
     title.trim().length === 0 ||
     content.trim().length === 0;
@@ -481,12 +476,12 @@ export default function HomePage() {
 
   const leftSidebarContent = (
     <>
-      <Card className="border border-slate-200 shadow-none">
+      <Card className={`border shadow-none dark:bg-slate-900 ${accentClasses.sectionBorder}`}>
         <CardBody className="space-y-4 p-5">
-          <Typography variant="h6" className="text-blue-gray-900">
+          <Typography variant="h6" className={accentClasses.heading}>
             Find Communities
           </Typography>
-          <Typography variant="small" className="text-slate-500">
+          <Typography variant="small" className="text-slate-700 dark:text-slate-300">
             Customize panel visibility from the Profile menu in the top-right.
           </Typography>
           <Input
@@ -501,19 +496,19 @@ export default function HomePage() {
         </CardBody>
       </Card>
 
-      <Card className="border border-slate-200 shadow-none">
+      <Card className={`border shadow-none dark:bg-slate-900 ${accentClasses.sectionBorder}`}>
         <CardBody className="space-y-4 p-5">
-          <Typography variant="h5" className="inline-flex items-center gap-2 text-blue-gray-900">
+          <Typography variant="h5" className={`inline-flex items-center gap-2 ${accentClasses.heading}`}>
             <HiUserPlus className="h-5 w-5" />
             Join Communities
           </Typography>
 
-          <Typography variant="small" className="text-slate-500">
+          <Typography variant="small" className="text-slate-700 dark:text-slate-300">
             Join one or more communities. Unlimited communities supported.
           </Typography>
 
           {filteredAvailableCommunities.length === 0 ? (
-            <Typography variant="small" className="text-slate-500">
+            <Typography variant="small" className="text-slate-700 dark:text-slate-300">
               No communities match your search.
             </Typography>
           ) : (
@@ -540,15 +535,15 @@ export default function HomePage() {
                       className="absolute left-0 top-0 w-full pb-2"
                       style={{ transform: `translateY(${virtualItem.start}px)` }}
                     >
-                      <div className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2">
+                      <div className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2 dark:border-slate-700 dark:bg-slate-800/60">
                         <div className="min-w-0">
-                          <span className="text-sm text-slate-700">{item}</span>
+                          <span className="text-sm text-slate-700 dark:text-slate-200">{item}</span>
                           {itemTags.length > 0 ? (
                             <div className="mt-1 flex flex-wrap gap-1">
                               {itemTags.slice(0, 3).map((tag) => (
                                 <span
                                   key={`${item}-tag-${tag}`}
-                                  className="rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-blue-700"
+                                  className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${accentClasses.softBadge}`}
                                 >
                                   #{tag}
                                 </span>
@@ -559,7 +554,7 @@ export default function HomePage() {
                         <div className="flex items-center gap-2">
                           <Link
                             href={`/pages/community/${encodeURIComponent(item)}`}
-                            className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-blue-gray-700 hover:bg-slate-100"
+                            className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium ${accentClasses.link}`}
                           >
                             Open
                             <HiArrowTopRightOnSquare className="h-4 w-4" />
@@ -589,9 +584,9 @@ export default function HomePage() {
 
   const rightSidebarContent = (
     <>
-      <Card className="border border-slate-200 shadow-none">
+      <Card className={`border shadow-none dark:bg-slate-900 ${accentClasses.sectionBorder}`}>
         <CardBody className="space-y-3 p-5">
-          <Typography variant="h5" className="text-blue-gray-900">
+          <Typography variant="h5" className={accentClasses.heading}>
             Create
           </Typography>
 
@@ -617,9 +612,9 @@ export default function HomePage() {
       </Card>
 
       {activeComposer === "community" ? (
-        <Card className="border border-slate-200 shadow-none">
+        <Card className={`border shadow-none dark:bg-slate-900 ${accentClasses.sectionBorder}`}>
           <CardBody className="space-y-4 p-5">
-            <Typography variant="h5" className="inline-flex items-center gap-2 text-blue-gray-900">
+            <Typography variant="h5" className={`inline-flex items-center gap-2 ${accentClasses.heading}`}>
               <HiFolderPlus className="h-5 w-5" />
               Create Community
             </Typography>
@@ -655,21 +650,21 @@ export default function HomePage() {
                 {communities.map((item) => (
                   <span
                     key={item}
-                    className="rounded-full border border-slate-300 bg-slate-50 px-3 py-1 text-sm text-slate-700"
+                    className="rounded-full border border-slate-300 bg-slate-50 px-3 py-1 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
                   >
                     {item}
                   </span>
                 ))}
               </div>
             ) : (
-              <Typography variant="small" className="text-slate-500">
+              <Typography variant="small" className="text-slate-700 dark:text-slate-300">
                 No custom communities yet.
               </Typography>
             )}
           </CardBody>
         </Card>
       ) : (
-        <Card className="border border-slate-200 shadow-none">
+        <Card className={`border shadow-none dark:bg-slate-900 ${accentClasses.sectionBorder}`}>
           <CardBody className="space-y-4 p-5">
             <PostComposer
               heading="Create New Post"
@@ -700,27 +695,27 @@ export default function HomePage() {
   );
 
   return (
-    <main className="min-h-screen bg-slate-50">
+    <main className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
       <AppNavbar
         centerContent={(
           <>
-            <Chip value={postCountLabel} variant="ghost" color="blue-gray" className="rounded-full" />
+            <Chip value={postCountLabel} variant="ghost" color={buttonColor} className="rounded-full" />
             <Chip
               value={`${joinedCommunities.length} joined`}
               variant="ghost"
-              color="blue-gray"
+              color={buttonColor}
               className="rounded-full"
             />
           </>
         )}
         profileMenuContent={(
           <div className="space-y-2 px-1 py-1">
-            <Typography variant="small" className="px-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <Typography variant="small" className="px-2 text-xs font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-300">
               Layout Panels
             </Typography>
 
-            <div className="grid min-h-9 grid-cols-[1fr_auto] items-center gap-3 rounded-lg border border-slate-200 px-2.5 py-2">
-              <Typography variant="small" className="leading-none text-slate-700">
+            <div className="grid min-h-9 grid-cols-[1fr_auto] items-center gap-3 rounded-lg border border-slate-200 px-2.5 py-2 dark:border-slate-700 dark:bg-slate-800/60">
+              <Typography variant="small" className="leading-none text-slate-700 dark:text-slate-300">
                 Community Finder
               </Typography>
               <button
@@ -730,8 +725,8 @@ export default function HomePage() {
                 onClick={() => setIsLeftSidebarOpen((prev) => !prev)}
                 title={isLeftSidebarOpen ? "Hide Community Finder" : "Show Community Finder"}
                 aria-label={isLeftSidebarOpen ? "Hide Community Finder" : "Show Community Finder"}
-                className={`relative inline-flex h-6 w-11 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 ${
-                  isLeftSidebarOpen ? "bg-blue-500" : "bg-slate-300"
+                className={`relative inline-flex h-6 w-11 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 ${toggleColors.ring} ${
+                  isLeftSidebarOpen ? toggleColors.on : "bg-slate-300 dark:bg-slate-700"
                 }`}
               >
                 <span
@@ -742,8 +737,8 @@ export default function HomePage() {
               </button>
             </div>
 
-            <div className="grid min-h-9 grid-cols-[1fr_auto] items-center gap-3 rounded-lg border border-slate-200 px-2.5 py-2">
-              <Typography variant="small" className="leading-none text-slate-700">
+            <div className="grid min-h-9 grid-cols-[1fr_auto] items-center gap-3 rounded-lg border border-slate-200 px-2.5 py-2 dark:border-slate-700 dark:bg-slate-800/60">
+              <Typography variant="small" className="leading-none text-slate-700 dark:text-slate-300">
                 Create Panel
               </Typography>
               <button
@@ -753,8 +748,8 @@ export default function HomePage() {
                 onClick={() => setIsRightSidebarOpen((prev) => !prev)}
                 title={isRightSidebarOpen ? "Hide Create Panel" : "Show Create Panel"}
                 aria-label={isRightSidebarOpen ? "Hide Create Panel" : "Show Create Panel"}
-                className={`relative inline-flex h-6 w-11 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 ${
-                  isRightSidebarOpen ? "bg-blue-500" : "bg-slate-300"
+                className={`relative inline-flex h-6 w-11 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 ${toggleColors.ring} ${
+                  isRightSidebarOpen ? toggleColors.on : "bg-slate-300 dark:bg-slate-700"
                 }`}
               >
                 <span
@@ -770,7 +765,7 @@ export default function HomePage() {
 
       {submissionNotice ? (
         <div className="mx-auto w-full max-w-7xl px-6 pt-4 sm:px-10 lg:px-16">
-          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-200">
             {submissionNotice}
           </div>
         </div>
@@ -782,7 +777,7 @@ export default function HomePage() {
             <Button
               size="sm"
               variant="outlined"
-              color="blue-gray"
+              color={buttonColor}
               className="rounded-lg"
               onClick={() => setIsMobileLeftModalOpen(true)}
             >
@@ -810,16 +805,16 @@ export default function HomePage() {
           ) : null}
 
           <section className="min-w-0 flex-1">
-            <Card className="rounded-3xl border border-slate-200 bg-white shadow-xl">
+            <Card className={`rounded-3xl border bg-white shadow-xl dark:bg-slate-900 ${accentClasses.sectionBorder}`}>
               <CardBody className="flex flex-col gap-6 p-8 sm:p-10">
                 <div className="space-y-4">
-                  <Card className="border border-slate-200 shadow-none">
+                  <Card className={`border shadow-none dark:bg-slate-900 ${accentClasses.sectionBorder}`}>
                     <CardBody className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
                       <div>
-                        <Typography variant="h5" className="text-blue-gray-900">
+                        <Typography variant="h5" className={accentClasses.heading}>
                           Feed
                         </Typography>
-                        <Typography variant="small" className="text-slate-500">
+                        <Typography variant="small" className="text-slate-700 dark:text-slate-300">
                           {filteredPostCountLabel}
                         </Typography>
                       </div>
@@ -829,7 +824,7 @@ export default function HomePage() {
                           value="Joined communities"
                           size="sm"
                           variant="ghost"
-                          color="blue-gray"
+                          color={buttonColor}
                           className="rounded-full"
                         />
                       </div>
@@ -837,13 +832,13 @@ export default function HomePage() {
                   </Card>
 
                   {displayFeedPosts.length === 0 ? (
-                    <Card className="border border-dashed border-slate-300 shadow-none">
+                    <Card className="border border-dashed border-slate-300 shadow-none dark:border-slate-700 dark:bg-slate-900">
                       <CardBody className="space-y-3">
-                        <Typography variant="h6" className="inline-flex items-center gap-2 text-blue-gray-900">
+                        <Typography variant="h6" className={`inline-flex items-center gap-2 ${accentClasses.heading}`}>
                           <HiPencilSquare className="h-5 w-5" />
                           No posts in this feed
                         </Typography>
-                        <Typography className="text-slate-600">
+                        <Typography className="text-slate-700 dark:text-slate-200">
                           Join communities from the left panel to get feeds.
                         </Typography>
                       </CardBody>
@@ -870,13 +865,13 @@ export default function HomePage() {
                               className="absolute left-0 top-0 w-full pb-4"
                               style={{ transform: `translateY(${virtualItem.start}px)` }}
                             >
-                              <Card className="border border-slate-200 shadow-none">
+                              <Card className={`border shadow-none dark:bg-slate-900 ${accentClasses.sectionBorder}`}>
                                 <CardBody className="space-y-4">
                                   <div className="flex items-start justify-between gap-3">
-                                    <Typography variant="h6" className="text-blue-gray-900">
+                                    <Typography variant="h6" className={accentClasses.heading}>
                                       {post.title}
                                     </Typography>
-                                    <Typography variant="small" className="shrink-0 text-slate-500">
+                                    <Typography variant="small" className="shrink-0 text-slate-700 dark:text-slate-300">
                                       {post.createdAt}
                                     </Typography>
                                   </div>
@@ -892,7 +887,7 @@ export default function HomePage() {
                                             value={community}
                                             size="sm"
                                             variant="outlined"
-                                            color="blue-gray"
+                                            color={buttonColor}
                                             className="rounded-full"
                                           />
                                         </Link>
@@ -908,33 +903,33 @@ export default function HomePage() {
                                           value={`#${tag}`}
                                           size="sm"
                                           variant="ghost"
-                                          color="blue"
+                                          color={buttonColor}
                                           className="rounded-full"
                                         />
                                       ))}
                                     </div>
                                   ) : null}
 
-                                  <Typography className="leading-7 text-slate-700">
+                                  <Typography className="leading-7 text-slate-800 dark:text-slate-200">
                                     {post.content}
                                   </Typography>
 
-                                  <div className="flex flex-wrap items-center gap-2 border-t border-slate-200 pt-3">
+                                  <div className="flex flex-wrap items-center gap-2 border-t border-slate-200 pt-3 dark:border-slate-700">
                                     <Link href={`/pages/post/${encodeURIComponent(String(post.id))}`}>
-                                      <Button size="sm" variant="outlined" color="blue-gray" className="rounded-lg">
+                                      <Button size="sm" variant="outlined" color={buttonColor} className="rounded-lg">
                                         Open post
                                       </Button>
                                     </Link>
-                                    <Button size="sm" variant="text" color="blue-gray" className="rounded-lg">
+                                    <Button size="sm" variant="text" color={buttonColor} className="rounded-lg">
                                       Upvote
                                     </Button>
-                                    <Button size="sm" variant="text" color="blue-gray" className="rounded-lg">
+                                    <Button size="sm" variant="text" color={buttonColor} className="rounded-lg">
                                       Comment
                                     </Button>
-                                    <Button size="sm" variant="text" color="blue-gray" className="rounded-lg">
+                                    <Button size="sm" variant="text" color={buttonColor} className="rounded-lg">
                                       Share
                                     </Button>
-                                    <Typography variant="small" className="ml-auto inline-flex items-center gap-1 text-slate-500">
+                                    <Typography variant="small" className="ml-auto inline-flex items-center gap-1 text-slate-700 dark:text-slate-300">
                                       <HiCheckCircle className="h-4 w-4" />
                                       Posted in {Array.isArray(post.communities) ? post.communities.length : 0} communities
                                     </Typography>
@@ -967,9 +962,9 @@ export default function HomePage() {
             onClick={() => setIsMobileLeftModalOpen(false)}
           />
 
-          <div className="absolute inset-x-4 bottom-4 top-20 overflow-y-auto rounded-2xl bg-slate-50 p-4 shadow-2xl">
+          <div className="absolute inset-x-4 bottom-4 top-20 overflow-y-auto rounded-2xl bg-slate-50 p-4 shadow-2xl dark:bg-slate-900">
             <div className="mb-4 flex items-center justify-between">
-              <Typography variant="h6" className="text-blue-gray-900">
+              <Typography variant="h6" className={accentClasses.heading}>
                 Community Finder
               </Typography>
               <Button
@@ -994,9 +989,9 @@ export default function HomePage() {
             onClick={() => setIsMobileRightModalOpen(false)}
           />
 
-          <div className="absolute inset-x-4 bottom-4 top-20 overflow-y-auto rounded-2xl bg-slate-50 p-4 shadow-2xl">
+          <div className="absolute inset-x-4 bottom-4 top-20 overflow-y-auto rounded-2xl bg-slate-50 p-4 shadow-2xl dark:bg-slate-900">
             <div className="mb-4 flex items-center justify-between">
-              <Typography variant="h6" className="text-blue-gray-900">
+              <Typography variant="h6" className={accentClasses.heading}>
                 Create
               </Typography>
               <Button

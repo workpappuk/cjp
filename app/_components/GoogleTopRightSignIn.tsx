@@ -106,13 +106,13 @@ export default function GoogleTopRightSignIn() {
         strategy="afterInteractive"
         onLoad={() => setIsScriptReady(true)}
       />
-        <div className="fixed right-4 top-4 z-50 rounded-2xl border border-slate-200 bg-white/95 px-3 py-3 shadow-lg backdrop-blur sm:right-6 sm:top-6">
+        <div className="fixed right-4 top-4 z-50 rounded-2xl border border-slate-200 bg-white/95 px-3 py-3 shadow-lg backdrop-blur dark:border-slate-700 dark:bg-slate-900/95 sm:right-6 sm:top-6">
         {clientId ? (
           <div ref={buttonContainerRef} id="g_id_signin" />
         ) : (
           <button
             type="button"
-            className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800"
+            className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
             onClick={() => void signIn("google", { callbackUrl: "/pages/home" })}
           >
             Continue with Google

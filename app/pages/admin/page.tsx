@@ -6,11 +6,15 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Card, CardBody, Typography } from "@/app/_types/mtw";
 import AppNavbar from "@/app/_components/AppNavbar";
+import { useTheme } from "@/app/_context/theme-context";
 import { isAuthenticated } from "@/app/_utils/auth";
+import { getThemeColorTokens } from "@/app/_utils/theme-colors";
 
 export default function AdminDashboardPage() {
   const { status } = useSession();
   const router = useRouter();
+  const { theme } = useTheme();
+  const { accent } = getThemeColorTokens(theme);
 
   const [isAdmin, setIsAdmin] = useState(false);
   const [error, setError] = useState("");
@@ -69,7 +73,7 @@ export default function AdminDashboardPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50">
+    <main className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
       <AppNavbar
         subtitle="Admin dashboard"
         maxWidthClassName="max-w-6xl"
@@ -77,25 +81,25 @@ export default function AdminDashboardPage() {
           <div className="flex items-center gap-2">
             <Link
               href="/pages/admin"
-              className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-slate-100 px-3 py-2 text-sm font-medium text-blue-gray-800"
+              className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium ${accent.activePill}`}
             >
               Dashboard
             </Link>
             <Link
               href="/pages/admin/moderation"
-              className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-blue-gray-700 hover:bg-slate-100"
+              className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium ${accent.link}`}
             >
               Moderation
             </Link>
             <Link
               href="/pages/admin/audit"
-              className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-blue-gray-700 hover:bg-slate-100"
+              className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium ${accent.link}`}
             >
               Audit
             </Link>
             <Link
               href="/pages/home"
-              className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-blue-gray-700 hover:bg-slate-100"
+              className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-800 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
             >
               Back to Home
             </Link>
@@ -104,12 +108,12 @@ export default function AdminDashboardPage() {
       />
 
       <div className="mx-auto w-full max-w-6xl space-y-8 px-6 py-8 sm:px-10 lg:px-16">
-        <section className="space-y-4 rounded-2xl border border-slate-200/80 bg-gradient-to-b from-white to-slate-50 p-4 sm:p-5">
+        <section className={`space-y-4 rounded-2xl border bg-gradient-to-b from-white to-slate-50 p-4 sm:p-5 dark:from-slate-900 dark:to-slate-950 ${accent.section}`}>
           <div>
-            <Typography variant="h4" className="text-blue-gray-900">
+            <Typography variant="h4" className={accent.title}>
               Admin Dashboard
             </Typography>
-            <Typography className="text-sm text-slate-600">
+            <Typography className="text-sm text-slate-700 dark:text-slate-200">
               Choose a workspace to manage moderation actions or inspect audit history.
             </Typography>
             {error ? <Typography className="pt-2 text-sm text-red-600">{error}</Typography> : null}
@@ -117,12 +121,12 @@ export default function AdminDashboardPage() {
 
           <div className="grid gap-4 md:grid-cols-2">
             <Link href="/pages/admin/moderation" className="block">
-              <Card className="h-full border border-slate-200 bg-white shadow-none transition hover:border-slate-300 hover:shadow-sm">
+              <Card className={`h-full border border-slate-200 bg-white shadow-none transition hover:shadow-sm dark:border-slate-700 dark:bg-slate-900 ${accent.cardHover}`}>
                 <CardBody className="space-y-2">
-                  <Typography variant="h5" className="text-blue-gray-900">
+                  <Typography variant="h5" className={accent.title}>
                     Moderation
                   </Typography>
-                  <Typography className="text-sm text-slate-600">
+                  <Typography className="text-sm text-slate-700 dark:text-slate-200">
                     Review and update post, community, and comment moderation statuses.
                   </Typography>
                 </CardBody>
@@ -130,12 +134,12 @@ export default function AdminDashboardPage() {
             </Link>
 
             <Link href="/pages/admin/audit" className="block">
-              <Card className="h-full border border-slate-200 bg-white shadow-none transition hover:border-slate-300 hover:shadow-sm">
+              <Card className={`h-full border border-slate-200 bg-white shadow-none transition hover:shadow-sm dark:border-slate-700 dark:bg-slate-900 ${accent.cardHover}`}>
                 <CardBody className="space-y-2">
-                  <Typography variant="h5" className="text-blue-gray-900">
+                  <Typography variant="h5" className={accent.title}>
                     Audit
                   </Typography>
-                  <Typography className="text-sm text-slate-600">
+                  <Typography className="text-sm text-slate-700 dark:text-slate-200">
                     Explore delta history, actor details, and request traces from the audit database.
                   </Typography>
                 </CardBody>

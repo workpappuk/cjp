@@ -6,7 +6,9 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Button, Card, CardBody, Typography } from "@/app/_types/mtw";
 import AppNavbar from "@/app/_components/AppNavbar";
+import { useTheme } from "@/app/_context/theme-context";
 import { isAuthenticated } from "@/app/_utils/auth";
+import { getThemeColorTokens } from "@/app/_utils/theme-colors";
 
 type AuditModelName = "Post" | "Community" | "Comment" | "Tag" | "UserProfile";
 type AuditOperation = "all" | "create" | "update";
@@ -112,6 +114,8 @@ function buildActorLabel(item: AuditItem) {
 export default function AdminAuditPage() {
   const { status } = useSession();
   const router = useRouter();
+  const { theme } = useTheme();
+  const { accent } = getThemeColorTokens(theme);
 
   const [isAdmin, setIsAdmin] = useState(false);
   const [error, setError] = useState("");
@@ -238,7 +242,7 @@ export default function AdminAuditPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50">
+    <main className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
       <AppNavbar
         subtitle="Admin audit"
         maxWidthClassName="max-w-6xl"
@@ -246,25 +250,25 @@ export default function AdminAuditPage() {
           <div className="flex items-center gap-2">
             <Link
               href="/pages/admin"
-              className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-blue-gray-700 hover:bg-slate-100"
+              className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium ${accent.link}`}
             >
               Dashboard
             </Link>
             <Link
               href="/pages/admin/moderation"
-              className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-blue-gray-700 hover:bg-slate-100"
+              className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium ${accent.link}`}
             >
               Moderation
             </Link>
             <Link
               href="/pages/admin/audit"
-              className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-slate-100 px-3 py-2 text-sm font-medium text-blue-gray-800"
+              className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium ${accent.activePill}`}
             >
               Audit
             </Link>
             <Link
               href="/pages/home"
-              className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-blue-gray-700 hover:bg-slate-100"
+              className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-800 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
             >
               Back to Home
             </Link>
@@ -273,26 +277,26 @@ export default function AdminAuditPage() {
       />
 
       <div className="mx-auto w-full max-w-6xl space-y-8 px-6 py-8 sm:px-10 lg:px-16">
-        <section className="space-y-4 rounded-2xl border border-slate-200/80 bg-gradient-to-b from-slate-50 to-white p-4 sm:p-5">
+        <section className={`space-y-4 rounded-2xl border bg-gradient-to-b from-slate-50 to-white p-4 sm:p-5 dark:from-slate-950 dark:to-slate-900 ${accent.section}`}>
           <div>
-            <Typography variant="h5" className="text-blue-gray-900">
+            <Typography variant="h5" className={accent.title}>
               Audit
             </Typography>
-            <Typography className="text-sm text-slate-600">
+            <Typography className="text-sm text-slate-700 dark:text-slate-200">
               Inspect field-level deltas and who changed what.
             </Typography>
           </div>
 
-          <Card className="border border-slate-200 bg-white shadow-none">
+          <Card className="border border-slate-200 bg-white shadow-none dark:border-slate-700 dark:bg-slate-900">
             <CardBody className="space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <Typography variant="h5" className="text-blue-gray-900">Audit Explorer</Typography>
-                <Typography className="text-xs text-slate-500">Query model delta history</Typography>
+                <Typography variant="h5" className={accent.title}>Audit Explorer</Typography>
+                <Typography className="text-xs text-slate-700 dark:text-slate-300">Query model delta history</Typography>
               </div>
 
               <div className="grid gap-2 md:grid-cols-4">
                 <select
-                  className="rounded border border-slate-300 px-2 py-2 text-sm"
+                  className="rounded border border-slate-300 bg-white px-2 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                   value={auditModelName}
                   onChange={(event) => setAuditModelName(event.target.value as AuditModelName)}
                 >
@@ -302,14 +306,14 @@ export default function AdminAuditPage() {
                 </select>
 
                 <input
-                  className="rounded border border-slate-300 px-2 py-2 text-sm"
+                  className="rounded border border-slate-300 bg-white px-2 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-400"
                   placeholder="documentId (optional)"
                   value={auditDocumentId}
                   onChange={(event) => setAuditDocumentId(event.target.value)}
                 />
 
                 <select
-                  className="rounded border border-slate-300 px-2 py-2 text-sm"
+                  className="rounded border border-slate-300 bg-white px-2 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                   value={auditOperation}
                   onChange={(event) => setAuditOperation(event.target.value as AuditOperation)}
                 >
@@ -332,28 +336,28 @@ export default function AdminAuditPage() {
               {error ? <Typography className="text-red-600">{error}</Typography> : null}
 
               {auditQueue.items.length === 0 ? (
-                <Typography className="text-slate-600">No audit events loaded yet. Run a search.</Typography>
+                <Typography className="text-slate-700 dark:text-slate-200">No audit events loaded yet. Run a search.</Typography>
               ) : (
                 <div className="space-y-2">
                   {auditQueue.items.map((item) => (
-                    <div key={item.id} className="rounded-xl border border-slate-200 bg-slate-50/60 p-3">
-                      <Typography className="text-sm font-semibold text-blue-gray-900">
+                    <div key={item.id} className="rounded-xl border border-slate-200 bg-slate-50/60 p-3 dark:border-slate-700 dark:bg-slate-800/70">
+                      <Typography className="text-sm font-semibold text-blue-gray-900 dark:text-slate-100">
                         {item.modelName} • {item.operation}
                       </Typography>
-                      <Typography className="pt-1 text-xs text-slate-500">
+                      <Typography className="pt-1 text-xs text-slate-700 dark:text-slate-300">
                         doc: {buildAuditDocumentLabel(item)} • at: {item.changedAt ? formatDisplayDate(item.changedAt) : "-"}
                       </Typography>
-                      <Typography className="pt-1 text-xs text-slate-500">
+                      <Typography className="pt-1 text-xs text-slate-700 dark:text-slate-300">
                         actor: {buildActorLabel(item)} • source: {item.source ?? "-"} • req: {item.requestId ?? "-"}
                       </Typography>
 
                       {item.delta.length === 0 ? (
-                        <Typography className="pt-2 text-xs text-slate-600">No field deltas.</Typography>
+                        <Typography className="pt-2 text-xs text-slate-700 dark:text-slate-200">No field deltas.</Typography>
                       ) : (
                         <div className="mt-2 overflow-x-auto">
                           <table className="min-w-full border-collapse text-left text-xs">
                             <thead>
-                              <tr className="border-b border-slate-200 text-slate-500">
+                              <tr className="border-b border-slate-200 text-slate-700 dark:border-slate-700 dark:text-slate-300">
                                 <th className="py-1 pr-2 font-medium">Field</th>
                                 <th className="py-1 pr-2 font-medium">From</th>
                                 <th className="py-1 font-medium">To</th>
@@ -361,12 +365,12 @@ export default function AdminAuditPage() {
                             </thead>
                             <tbody>
                               {item.delta.map((change, index) => (
-                                <tr key={`${item.id}-${change.path}-${index}`} className="border-b border-slate-100 align-top">
-                                  <td className="py-1 pr-2 text-blue-gray-900">{change.path}</td>
-                                  <td className="py-1 pr-2 text-slate-600">
+                                <tr key={`${item.id}-${change.path}-${index}`} className="border-b border-slate-100 align-top dark:border-slate-700">
+                                  <td className="py-1 pr-2 text-blue-gray-900 dark:text-slate-100">{change.path}</td>
+                                  <td className="py-1 pr-2 text-slate-700 dark:text-slate-200">
                                     {renderAuditValue(change.from)}
                                   </td>
-                                  <td className="py-1 text-slate-600">
+                                  <td className="py-1 text-slate-700 dark:text-slate-200">
                                     {renderAuditValue(change.to)}
                                   </td>
                                 </tr>

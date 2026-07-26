@@ -39,14 +39,14 @@ export default function PostComposer({
   return (
     <div className="space-y-4">
       {heading ? (
-        <Typography variant="h5" className="text-blue-gray-900">
+        <Typography variant="h5" className="text-blue-gray-900 dark:text-slate-100">
           {heading}
         </Typography>
       ) : null}
 
       <form className="space-y-4" onSubmit={onSubmit}>
         <Input
-                    variant="standard"
+          variant="standard"
 
           label="Post title"
           value={title}
@@ -56,11 +56,11 @@ export default function PostComposer({
         />
 
         <div>
-          <label className="mb-2 block text-sm font-medium text-slate-700">
+          <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
             {contentLabel}
           </label>
           <textarea
-            className="w-full rounded-xl border border-slate-300 bg-white p-3 text-sm text-slate-800 outline-none focus:border-slate-400"
+            className="w-full rounded-xl border border-slate-300 bg-white p-3 text-sm text-slate-800 outline-none focus:border-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-slate-500"
             rows={contentRows}
             placeholder={contentPlaceholder}
             value={content}
@@ -71,7 +71,7 @@ export default function PostComposer({
         {extraSection}
 
         {helperText ? (
-          <Typography variant="small" className="text-slate-500">
+          <Typography variant="small" className="text-slate-500 dark:text-slate-400">
             {helperText}
           </Typography>
         ) : null}

@@ -10,7 +10,9 @@ import { HiArrowLeft, HiCheckCircle, HiUserPlus } from "react-icons/hi2";
 import AppNavbar from "@/app/_components/AppNavbar";
 import PostComposer from "@/app/_components/PostComposer";
 import TagsPicker from "@/app/_components/TagsPicker";
+import { useTheme } from "@/app/_context/theme-context";
 import { isAuthenticated } from "@/app/_utils/auth";
+import { getThemeColorTokens } from "@/app/_utils/theme-colors";
 import { attachTagsToTarget, dedupeTagNames } from "@/app/_utils/tags";
 
 const INITIAL_FEED_RENDER_COUNT = 30;
@@ -38,6 +40,7 @@ function formatDisplayDate(input: string | Date) {
 export default function CommunityPage() {
   const router = useRouter();
   const { status } = useSession();
+  const { theme } = useTheme();
   const params = useParams();
   const [posts, setPosts] = useState<PostItem[]>([]);
   const [postTitle, setPostTitle] = useState("");
@@ -49,6 +52,14 @@ export default function CommunityPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [visibleCount, setVisibleCount] = useState(INITIAL_FEED_RENDER_COUNT);
   const [submissionNotice, setSubmissionNotice] = useState("");
+
+  const { buttonColor, accent: accentClasses } = getThemeColorTokens(theme);
+  const accent = {
+    color: buttonColor,
+    link: accentClasses.link,
+    title: accentClasses.title,
+    section: accentClasses.section,
+  };
 
   const persistJoinedCommunities = async (nextJoined: string[]) => {
     await fetch("/api/user-profile", {
@@ -221,10 +232,6 @@ export default function CommunityPage() {
     return filteredFeedItems.slice(0, visibleCount);
   }, [filteredFeedItems, visibleCount]);
 
-  useEffect(() => {
-    setVisibleCount(INITIAL_FEED_RENDER_COUNT);
-  }, [communityName, searchQuery]);
-
   const handleCreatePost = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!isJoined || postComposerDisabled) return;
@@ -304,7 +311,7 @@ export default function CommunityPage() {
   };
 
   return (
-    <main className="min-h-screen bg-slate-50">
+    <main className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
       <AppNavbar
         subtitle={`Community • ${communityName}`}
         maxWidthClassName="max-w-5xl"
@@ -312,14 +319,14 @@ export default function CommunityPage() {
           <>
             <Chip
               value={isJoined ? "Joined" : "Not joined"}
-              color={isJoined ? "green" : "blue-gray"}
+              color={isJoined ? "green" : accent.color}
               variant="ghost"
               className="rounded-full"
               icon={<HiUserPlus className="h-3.5 w-3.5" />}
             />
             <Chip
               value={`${totalCount.toLocaleString()} posts`}
-              color="blue-gray"
+              color={accent.color}
               variant="ghost"
               className="rounded-full"
               icon={<HiCheckCircle className="h-3.5 w-3.5" />}
@@ -327,7 +334,7 @@ export default function CommunityPage() {
           </>
         )}
         rightContent={(
-          <Link href="/pages/home" className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-blue-gray-700 hover:bg-slate-100">
+          <Link href="/pages/home" className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium ${accent.link}`}>
             <HiArrowLeft aria-hidden="true" />
             Back to Home
           </Link>
@@ -337,17 +344,17 @@ export default function CommunityPage() {
       <div className="mx-auto w-full max-w-5xl space-y-4 px-6 py-8 sm:px-10 lg:px-16">
 
         {submissionNotice ? (
-          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-200">
             {submissionNotice}
           </div>
         ) : null}
 
-        <Card className="rounded-2xl border border-slate-200 bg-white shadow-none">
+        <Card className={`rounded-2xl border bg-white shadow-none dark:bg-slate-900 ${accent.section}`}>
           <CardBody className="space-y-2">
-            <Typography variant="h3" className="text-blue-gray-900">
+            <Typography variant="h3" className={accent.title}>
               {communityName}
             </Typography>
-            <Typography className="text-slate-600">
+            <Typography className="text-slate-700 dark:text-slate-200">
               Community feed with authored posts.
             </Typography>
 
@@ -359,7 +366,7 @@ export default function CommunityPage() {
                     value={`#${tag}`}
                     size="sm"
                     variant="ghost"
-                    color="blue"
+                    color={accent.color}
                     className="rounded-full"
                   />
                 ))}
@@ -376,29 +383,29 @@ export default function CommunityPage() {
                   setSearchQuery(event.target.value)
                 }
                 crossOrigin={undefined}
-                color="blue"
+                color={accent.color}
               />
             </div>
           </CardBody>
         </Card>
 
-        <Card className="rounded-2xl border border-slate-200 bg-white shadow-none">
+        <Card className={`rounded-2xl border bg-white shadow-none dark:bg-slate-900 ${accent.section}`}>
           <CardBody className="space-y-4">
             {!isJoined ? (
-              <div className="rounded-xl border border-blue-100 bg-blue-50 p-3">
-                <Typography variant="small" className="text-blue-gray-800">
+              <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 dark:border-blue-800/80 dark:bg-blue-900/20">
+                <Typography variant="small" className="text-blue-gray-800 dark:text-slate-200">
                   You need to join {communityName} before posting.
                 </Typography>
                 <div className="pt-2">
-                  <Button size="sm" color="blue" onClick={handleJoinCommunity}>
+                  <Button size="sm" color={accent.color} onClick={handleJoinCommunity}>
                     Join Community
                   </Button>
                 </div>
               </div>
             ) : (
               <div className="space-y-3">
-                <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
-                  <Typography variant="small" className="text-slate-700">
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/70">
+                  <Typography variant="small" className="text-slate-700 dark:text-slate-300">
                     You joined {communityName}. You can leave this community from here.
                   </Typography>
                   <Button
@@ -420,7 +427,7 @@ export default function CommunityPage() {
                   onSubmit={handleCreatePost}
                   disabled={postComposerDisabled}
                   buttonLabel="Post to Community"
-                  color="blue"
+                  color={accent.color}
                   contentLabel="What's on your mind?"
                   contentRows={4}
                   helperText="Share an update with this community."
@@ -431,7 +438,7 @@ export default function CommunityPage() {
                       onChange={setPostTags}
                       suggestedTags={availableTags}
                       disabled={!isJoined}
-                      color="blue"
+                      color={accent.color}
                     />
                   )}
                 />
@@ -441,9 +448,9 @@ export default function CommunityPage() {
         </Card>
 
         {filteredFeedItems.length === 0 ? (
-          <Card className="border border-dashed border-slate-300 shadow-none">
+          <Card className="border border-dashed border-slate-300 shadow-none dark:border-slate-700 dark:bg-slate-900">
             <CardBody>
-              <Typography className="text-slate-600">
+              <Typography className="text-slate-700 dark:text-slate-200">
                 No posts found in this community yet.
               </Typography>
             </CardBody>
@@ -451,17 +458,17 @@ export default function CommunityPage() {
         ) : (
           <div className="space-y-3">
             {visibleFeedItems.map((item) => (
-              <Card key={item.id} className="border border-slate-200 shadow-none">
+              <Card key={item.id} className="border border-slate-200 shadow-none dark:border-slate-700 dark:bg-slate-900">
                 <CardBody className="space-y-2">
                   <div className="flex items-start justify-between gap-3">
-                    <Typography variant="h6" className="text-blue-gray-900">
+                    <Typography variant="h6" className="text-blue-gray-900 dark:text-slate-100">
                       {item.title}
                     </Typography>
-                    <Typography variant="small" className="shrink-0 text-slate-500">
+                    <Typography variant="small" className="shrink-0 text-slate-700 dark:text-slate-300">
                       {item.createdAt}
                     </Typography>
                   </div>
-                  <Typography className="text-slate-700">{item.content}</Typography>
+                  <Typography className="text-slate-800 dark:text-slate-200">{item.content}</Typography>
                   {Array.isArray(item.tags) && item.tags.length > 0 ? (
                     <div className="flex flex-wrap gap-2">
                       {item.tags.map((tag) => (
@@ -470,19 +477,19 @@ export default function CommunityPage() {
                           value={`#${tag}`}
                           size="sm"
                           variant="ghost"
-                          color="blue"
+                          color={accent.color}
                           className="rounded-full"
                         />
                       ))}
                     </div>
                   ) : null}
-                  <div className="flex items-center gap-2 border-t border-slate-200 pt-2">
+                  <div className="flex items-center gap-2 border-t border-slate-200 pt-2 dark:border-slate-700">
                     <Link href={`/pages/post/${encodeURIComponent(String(item.id))}`}>
-                      <Button size="sm" variant="outlined" color="blue-gray" className="rounded-lg">
+                      <Button size="sm" variant="outlined" color={accent.color} className="rounded-lg">
                         Open post
                       </Button>
                     </Link>
-                    <Button size="sm" variant="text" color="blue-gray" className="rounded-lg">
+                    <Button size="sm" variant="text" color={accent.color} className="rounded-lg">
                       Upvote
                     </Button>
                     {isJoined ? (
@@ -490,7 +497,7 @@ export default function CommunityPage() {
                         <Button
                           size="sm"
                           variant="text"
-                          color="blue-gray"
+                          color={accent.color}
                           className="rounded-lg"
                         >
                           Comment
@@ -500,14 +507,14 @@ export default function CommunityPage() {
                       <Button
                         size="sm"
                         variant="text"
-                        color="blue-gray"
+                        color={accent.color}
                         className="rounded-lg"
                         disabled
                       >
                         Join to Comment
                       </Button>
                     )}
-                    <Button size="sm" variant="text" color="blue-gray" className="rounded-lg">
+                    <Button size="sm" variant="text" color={accent.color} className="rounded-lg">
                       Share
                     </Button>
                   </div>
@@ -519,7 +526,7 @@ export default function CommunityPage() {
               <div className="flex justify-center pt-2">
                 <Button
                   variant="outlined"
-                  color="blue-gray"
+                  color={accent.color}
                   className="rounded-lg"
                   onClick={() => setVisibleCount((prev) => prev + FEED_LOAD_STEP)}
                 >

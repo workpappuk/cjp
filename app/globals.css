@@ -1,9 +1,15 @@
 @import "tailwindcss";
 @source "../node_modules/@material-tailwind/react";
+@custom-variant dark (&:where(.dark, .dark *));
 
 :root {
   --background: #ffffff;
   --foreground: #171717;
+}
+
+.dark {
+  --background: #020617;
+  --foreground: #e2e8f0;
 }
 
 @theme inline {
@@ -11,13 +17,6 @@
   --color-foreground: var(--foreground);
   --font-sans: "Avenir Next", "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
   --font-mono: "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {

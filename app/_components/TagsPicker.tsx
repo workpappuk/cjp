@@ -20,6 +20,18 @@ function isValidTagName(tag: string) {
   return Boolean(tag) && tag.length <= 64 && !/\s/.test(tag);
 }
 
+function getSuggestionClasses(color: string) {
+  if (color === "green") {
+    return "border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 dark:border-emerald-800/80 dark:bg-emerald-900/20 dark:text-emerald-200 dark:hover:bg-emerald-900/35";
+  }
+
+  if (color === "orange") {
+    return "border-orange-200 bg-orange-50 text-orange-800 hover:bg-orange-100 dark:border-orange-800/80 dark:bg-orange-900/20 dark:text-orange-200 dark:hover:bg-orange-900/35";
+  }
+
+  return "border-blue-200 bg-blue-50 text-blue-800 hover:bg-blue-100 dark:border-blue-800/80 dark:bg-blue-900/20 dark:text-blue-200 dark:hover:bg-blue-900/35";
+}
+
 export default function TagsPicker({
   label = "Tags",
   value,
@@ -35,6 +47,7 @@ export default function TagsPicker({
   const [debouncedDraftTag, setDebouncedDraftTag] = useState("");
   const [remoteSuggestedTags, setRemoteSuggestedTags] = useState<string[]>([]);
   const [errorText, setErrorText] = useState("");
+  const suggestionClasses = getSuggestionClasses(color);
 
   const normalizedValue = useMemo(() => dedupeTagNames(value), [value]);
 
@@ -50,7 +63,6 @@ export default function TagsPicker({
     const query = debouncedDraftTag;
 
     if (!query) {
-      setRemoteSuggestedTags([]);
       return;
     }
 
@@ -152,7 +164,7 @@ export default function TagsPicker({
 
   return (
     <div className="space-y-2">
-      <Typography variant="small" className="font-medium text-slate-700">
+      <Typography variant="small" className="font-medium text-slate-700 dark:text-slate-300">
         {label}
       </Typography>
 
@@ -187,7 +199,7 @@ export default function TagsPicker({
           {errorText}
         </Typography>
       ) : (
-        <Typography variant="small" className="text-slate-500">
+        <Typography variant="small" className="text-slate-500 dark:text-slate-400">
           {helperText}
         </Typography>
       )}
@@ -199,7 +211,7 @@ export default function TagsPicker({
               key={tag}
               type="button"
               onClick={() => removeTag(tag)}
-              className="rounded-full border border-slate-300 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed"
+              className="rounded-full border border-slate-300 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
               disabled={disabled}
               title="Remove tag"
             >
@@ -216,7 +228,7 @@ export default function TagsPicker({
               key={tag}
               type="button"
               onClick={() => addTag(tag)}
-              className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-800 hover:bg-blue-100 disabled:cursor-not-allowed"
+              className={`rounded-full border px-3 py-1 text-xs font-medium disabled:cursor-not-allowed ${suggestionClasses}`}
               disabled={disabled}
             >
               + #{tag}

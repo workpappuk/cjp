@@ -9,7 +9,9 @@ import { Card, CardBody, Chip, Typography } from "@/app/_types/mtw";
 import { HiArrowLeft, HiChatBubbleBottomCenterText } from "react-icons/hi2";
 import AppNavbar from "@/app/_components/AppNavbar";
 import CommentComposer from "@/app/_components/CommentComposer";
+import { useTheme } from "@/app/_context/theme-context";
 import { isAuthenticated } from "@/app/_utils/auth";
+import { getThemeColorTokens } from "@/app/_utils/theme-colors";
 
 type PostItem = {
   id: string | number;
@@ -56,17 +58,17 @@ function CommentThread({ comments, depth = 0 }: CommentThreadProps) {
     <div className="space-y-2">
       {comments.map((comment) => (
         <div key={comment.id} style={{ marginLeft: `${depth * 16}px` }}>
-          <Card className="border border-slate-200 shadow-none">
+          <Card className="border border-slate-200 shadow-none dark:border-slate-700 dark:bg-slate-900">
             <CardBody className="space-y-1">
-              <Typography className="text-slate-700">{comment.text}</Typography>
-              <Typography variant="small" className="text-slate-500">
+              <Typography className="text-slate-800 dark:text-slate-200">{comment.text}</Typography>
+              <Typography variant="small" className="text-slate-700 dark:text-slate-300">
                 {comment.createdAt}
               </Typography>
             </CardBody>
           </Card>
 
           {Array.isArray(comment.replies) && comment.replies.length > 0 ? (
-            <div className="mt-2 border-l border-slate-200 pl-2">
+            <div className="mt-2 border-l border-slate-200 pl-2 dark:border-slate-700">
               <CommentThread comments={comment.replies} depth={depth + 1} />
             </div>
           ) : null}
@@ -79,12 +81,21 @@ function CommentThread({ comments, depth = 0 }: CommentThreadProps) {
 export default function PostDetailPage() {
   const router = useRouter();
   const { status } = useSession();
+  const { theme } = useTheme();
   const params = useParams();
   const [post, setPost] = useState<PostItem | null>(null);
   const [comments, setComments] = useState<CommentItem[]>([]);
   const [joinedCommunities, setJoinedCommunities] = useState<string[]>([]);
   const [commentText, setCommentText] = useState("");
   const [submissionNotice, setSubmissionNotice] = useState("");
+
+  const { buttonColor, accent: accentClasses } = getThemeColorTokens(theme);
+  const accent = {
+    color: buttonColor,
+    link: accentClasses.link,
+    title: accentClasses.title,
+    section: accentClasses.section,
+  };
 
   const persistJoinedCommunities = async (nextJoined: string[]) => {
     await fetch("/api/user-profile", {
@@ -271,14 +282,14 @@ export default function PostDetailPage() {
 
   if (!post) {
     return (
-      <main className="min-h-screen bg-slate-50">
+      <main className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
         <AppNavbar
           subtitle="Post discussion"
           maxWidthClassName="max-w-4xl"
           rightContent={(
             <Link
               href="/pages/home"
-              className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-blue-gray-700 hover:bg-slate-100"
+              className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium ${accent.link}`}
             >
               <HiArrowLeft aria-hidden="true" />
               Back to Home
@@ -288,9 +299,9 @@ export default function PostDetailPage() {
 
         <div className="mx-auto w-full max-w-4xl space-y-4 px-6 py-8 sm:px-10 lg:px-16">
 
-          <Card className="border border-dashed border-slate-300 shadow-none">
+          <Card className="border border-dashed border-slate-300 shadow-none dark:border-slate-700 dark:bg-slate-900">
             <CardBody>
-              <Typography className="text-slate-600">Post not found.</Typography>
+              <Typography className="text-slate-700 dark:text-slate-200">Post not found.</Typography>
             </CardBody>
           </Card>
         </div>
@@ -299,14 +310,14 @@ export default function PostDetailPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50">
+    <main className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
       <AppNavbar
         subtitle="Post discussion"
         maxWidthClassName="max-w-4xl"
         rightContent={(
           <Link
             href="/pages/home"
-            className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-blue-gray-700 hover:bg-slate-100"
+            className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium ${accent.link}`}
           >
             <HiArrowLeft aria-hidden="true" />
             Back to Home
@@ -316,13 +327,13 @@ export default function PostDetailPage() {
 
       <div className="mx-auto w-full max-w-4xl space-y-4 px-6 py-8 sm:px-10 lg:px-16">
 
-        <Card className="border border-slate-200 shadow-none">
+        <Card className={`border shadow-none dark:bg-slate-900 ${accent.section}`}>
           <CardBody className="space-y-4">
             <div className="flex items-start justify-between gap-3">
-              <Typography variant="h4" className="text-blue-gray-900">
+              <Typography variant="h4" className={accent.title}>
                 {post.title}
               </Typography>
-              <Typography variant="small" className="shrink-0 text-slate-500">
+              <Typography variant="small" className="shrink-0 text-slate-700 dark:text-slate-300">
                 {post.createdAt}
               </Typography>
             </div>
@@ -338,7 +349,7 @@ export default function PostDetailPage() {
                       value={community}
                       size="sm"
                       variant="outlined"
-                      color="blue-gray"
+                      color={accent.color}
                       className="rounded-full"
                     />
                   </Link>
@@ -354,20 +365,20 @@ export default function PostDetailPage() {
                     value={`#${tag}`}
                     size="sm"
                     variant="ghost"
-                    color="blue"
+                    color={accent.color}
                     className="rounded-full"
                   />
                 ))}
               </div>
             ) : null}
 
-            <Typography className="leading-8 text-slate-700">{post.content}</Typography>
+            <Typography className="leading-8 text-slate-800 dark:text-slate-200">{post.content}</Typography>
           </CardBody>
         </Card>
 
-        <Card className="border border-slate-200 shadow-none">
+        <Card className={`border shadow-none dark:bg-slate-900 ${accent.section}`}>
           <CardBody className="space-y-4">
-            <Typography variant="h5" className="inline-flex items-center gap-2 text-blue-gray-900">
+            <Typography variant="h5" className={`inline-flex items-center gap-2 ${accent.title}`}>
               <HiChatBubbleBottomCenterText aria-hidden="true" />
               Comments ({totalCommentCount})
             </Typography>
@@ -385,17 +396,17 @@ export default function PostDetailPage() {
                   : ""
               }
               onJoin={communityToJoinForComments ? handleJoinForComments : undefined}
-              color="blue"
+              color={accent.color}
             />
 
             {submissionNotice ? (
-              <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-200">
                 {submissionNotice}
               </div>
             ) : null}
 
             {comments.length === 0 ? (
-              <Typography className="text-slate-600">No comments yet.</Typography>
+              <Typography className="text-slate-700 dark:text-slate-200">No comments yet.</Typography>
             ) : (
               <CommentThread comments={comments} />
             )}

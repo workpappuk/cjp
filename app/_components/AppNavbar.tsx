@@ -26,7 +26,7 @@ export default function AppNavbar({
   maxWidthClassName = "max-w-7xl",
 }: AppNavbarProps) {
   const { data: session } = useSession();
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme, colorMode, setColorMode } = useTheme();
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [localUser, setLocalUser] = useState<{
     name?: string | null;
@@ -146,19 +146,19 @@ export default function AppNavbar({
   const isAdmin = Boolean(localUser?.isAdmin);
 
   return (
-    <nav className="sticky top-0 z-20 border-b border-slate-200/70 bg-white/85 backdrop-blur">
+    <nav className="sticky top-0 z-20 border-b border-slate-200/70 bg-white/85 backdrop-blur dark:border-slate-700/80 dark:bg-slate-900/85">
       <div
         className={`mx-auto flex w-full items-center justify-between gap-3 px-6 py-3 sm:px-10 lg:px-16 ${maxWidthClassName}`}
       >
-        <Link href="/pages/home" className="flex items-center gap-3 text-blue-gray-900">
-          <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white">
+        <Link href="/pages/home" className="flex items-center gap-3 text-blue-gray-900 dark:text-slate-100">
+          <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
             <HiGlobeAlt className="h-5 w-5" />
           </span>
           <div>
-            <Typography variant="h6" className="leading-tight text-blue-gray-900">
+            <Typography variant="h6" className="leading-tight text-blue-gray-900 dark:text-slate-100">
               ThreadForge
             </Typography>
-            <Typography variant="small" className="hidden text-slate-500 sm:block">
+            <Typography variant="small" className="hidden text-slate-700 dark:text-slate-300 sm:block">
               {subtitle}
             </Typography>
           </div>
@@ -199,14 +199,14 @@ export default function AppNavbar({
                 id="profile-menu"
                 role="menu"
                 aria-label="Profile menu"
-                className="absolute right-0 z-30 mt-2 w-56 rounded-xl border border-slate-200 bg-white p-2 shadow-lg"
+                className="absolute right-0 z-30 mt-2 w-56 rounded-xl border border-slate-200 bg-white p-2 shadow-lg dark:border-slate-700 dark:bg-slate-900"
               >
-                <div className="mb-2 rounded-lg bg-slate-50 px-3 py-2">
-                  <Typography variant="small" className="truncate text-sm font-semibold text-blue-gray-900">
+                <div className="mb-2 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-800">
+                  <Typography variant="small" className="truncate text-sm font-semibold text-blue-gray-900 dark:text-slate-100">
                     {profileName}
                   </Typography>
                   {profileEmail ? (
-                    <Typography variant="small" className="truncate text-xs text-slate-500">
+                    <Typography variant="small" className="truncate text-xs text-slate-700 dark:text-slate-300">
                       {profileEmail}
                     </Typography>
                   ) : null}
@@ -214,16 +214,16 @@ export default function AppNavbar({
 
                 <Typography
                   variant="small"
-                  className="px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-slate-600"
+                  className="px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-200"
                 >
-                  Theme
+                  Accent Theme
                 </Typography>
 
                 <button
                   type="button"
                   role="menuitem"
                   onClick={() => setTheme("orange")}
-                  className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-100"
+                  className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
                 >
                   <span>Sunrise</span>
                   {theme === "orange" ? <HiCheck className="h-4 w-4" /> : null}
@@ -233,7 +233,7 @@ export default function AppNavbar({
                   type="button"
                   role="menuitem"
                   onClick={() => setTheme("emerald")}
-                  className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-100"
+                  className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
                 >
                   <span>Forest</span>
                   {theme === "emerald" ? <HiCheck className="h-4 w-4" /> : null}
@@ -243,18 +243,57 @@ export default function AppNavbar({
                   type="button"
                   role="menuitem"
                   onClick={() => setTheme("sky")}
-                  className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-100"
+                  className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
                 >
                   <span>Skyline</span>
                   {theme === "sky" ? <HiCheck className="h-4 w-4" /> : null}
                 </button>
 
-                <div className="my-2 border-t border-slate-200" />
+                <div className="my-2 border-t border-slate-200 dark:border-slate-700" />
+
+                <Typography
+                  variant="small"
+                  className="px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-200"
+                >
+                  Appearance
+                </Typography>
+
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => setColorMode("system")}
+                  className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+                >
+                  <span>System</span>
+                  {colorMode === "system" ? <HiCheck className="h-4 w-4" /> : null}
+                </button>
+
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => setColorMode("light")}
+                  className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+                >
+                  <span>Light</span>
+                  {colorMode === "light" ? <HiCheck className="h-4 w-4" /> : null}
+                </button>
+
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => setColorMode("dark")}
+                  className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+                >
+                  <span>Dark</span>
+                  {colorMode === "dark" ? <HiCheck className="h-4 w-4" /> : null}
+                </button>
+
+                <div className="my-2 border-t border-slate-200 dark:border-slate-700" />
 
                 {profileMenuContent ? (
                   <div>
                     {profileMenuContent}
-                    <div className="my-2 border-t border-slate-200" />
+                    <div className="my-2 border-t border-slate-200 dark:border-slate-700" />
                   </div>
                 ) : null}
 
@@ -263,21 +302,21 @@ export default function AppNavbar({
                     <Link
                       href="/pages/admin"
                       role="menuitem"
-                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-blue-700 hover:bg-blue-50"
+                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-blue-700 hover:bg-blue-50 dark:text-sky-300 dark:hover:bg-slate-800"
                     >
                       Admin Dashboard
                     </Link>
                     <Link
                       href="/pages/admin/moderation"
                       role="menuitem"
-                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-blue-700 hover:bg-blue-50"
+                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-blue-700 hover:bg-blue-50 dark:text-sky-300 dark:hover:bg-slate-800"
                     >
                       Moderation
                     </Link>
                     <Link
                       href="/pages/admin/audit"
                       role="menuitem"
-                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-blue-700 hover:bg-blue-50"
+                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-blue-700 hover:bg-blue-50 dark:text-sky-300 dark:hover:bg-slate-800"
                     >
                       Audit
                     </Link>
@@ -288,7 +327,7 @@ export default function AppNavbar({
                   type="button"
                   role="menuitem"
                   onClick={handleLogout}
-                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 dark:text-rose-300 dark:hover:bg-slate-800"
                 >
                   <HiArrowRightOnRectangle className="h-4 w-4" />
                   Logout

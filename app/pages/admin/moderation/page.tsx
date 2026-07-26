@@ -4,9 +4,11 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Button, Card, CardBody, Typography } from "@/app/_types/mtw";
+import { Button, Card, CardBody, Chip, Typography } from "@/app/_types/mtw";
 import AppNavbar from "@/app/_components/AppNavbar";
+import { useTheme } from "@/app/_context/theme-context";
 import { isAuthenticated } from "@/app/_utils/auth";
+import { getThemeColorTokens } from "@/app/_utils/theme-colors";
 
 type ModerationStatus = "pending" | "approved" | "rejected";
 type RecordStatus = "active" | "deleted" | "archived" | "flagged";
@@ -88,6 +90,19 @@ function formatDisplayDate(input: string | Date) {
   return parsed.toLocaleString();
 }
 
+function getModerationChipColor(status: ModerationStatus) {
+  if (status === "approved") return "green" as const;
+  if (status === "rejected") return "red" as const;
+  return "amber" as const;
+}
+
+function getRecordChipColor(status: RecordStatus) {
+  if (status === "active") return "green" as const;
+  if (status === "flagged") return "amber" as const;
+  if (status === "deleted") return "red" as const;
+  return "blue-gray" as const;
+}
+
 function buildQueueUrl(
   targetType: TargetType,
   moderationFilter: ModerationStatus | "all",
@@ -111,6 +126,8 @@ function buildQueueUrl(
 export default function AdminModerationPage() {
   const { status } = useSession();
   const router = useRouter();
+  const { theme } = useTheme();
+  const { accent } = getThemeColorTokens(theme);
 
   const [isAdmin, setIsAdmin] = useState(false);
   const [isLoadingSummary, setIsLoadingSummary] = useState(true);
@@ -358,7 +375,7 @@ export default function AdminModerationPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50">
+    <main className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
       <AppNavbar
         subtitle="Admin moderation"
         maxWidthClassName="max-w-6xl"
@@ -366,25 +383,25 @@ export default function AdminModerationPage() {
           <div className="flex items-center gap-2">
             <Link
               href="/pages/admin"
-              className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-blue-gray-700 hover:bg-slate-100"
+              className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium ${accent.link}`}
             >
               Dashboard
             </Link>
             <Link
               href="/pages/admin/moderation"
-              className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-slate-100 px-3 py-2 text-sm font-medium text-blue-gray-800"
+              className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium ${accent.activePill}`}
             >
               Moderation
             </Link>
             <Link
               href="/pages/admin/audit"
-              className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-blue-gray-700 hover:bg-slate-100"
+              className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium ${accent.link}`}
             >
               Audit
             </Link>
             <Link
               href="/pages/home"
-              className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-blue-gray-700 hover:bg-slate-100"
+              className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-800 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
             >
               Back to Home
             </Link>
@@ -393,38 +410,38 @@ export default function AdminModerationPage() {
       />
 
       <div className="mx-auto w-full max-w-6xl space-y-8 px-6 py-8 sm:px-10 lg:px-16">
-        <section className="space-y-4 rounded-2xl border border-slate-200/80 bg-gradient-to-b from-white to-slate-50 p-4 sm:p-5">
+        <section className={`space-y-4 rounded-2xl border bg-gradient-to-b from-white to-slate-50 p-4 sm:p-5 dark:from-slate-900 dark:to-slate-950 ${accent.section}`}>
           <div className="flex items-center justify-between gap-3">
             <div>
-              <Typography variant="h5" className="text-blue-gray-900">
+              <Typography variant="h5" className={accent.title}>
                 Moderation
               </Typography>
-              <Typography className="text-sm text-slate-600">
+              <Typography className="text-sm text-slate-700 dark:text-slate-200">
                 Review posts, communities, and comments that need admin decisions.
               </Typography>
             </div>
           </div>
 
-          <Card className="border border-slate-200 bg-white shadow-none">
+          <Card className="border border-slate-200 bg-white shadow-none dark:border-slate-700 dark:bg-slate-900">
             <CardBody className="space-y-2">
-              <Typography variant="h4" className="text-blue-gray-900">
+              <Typography variant="h4" className={accent.title}>
                 Moderation Queue
               </Typography>
-              <Typography className="text-slate-600">
+              <Typography className="text-slate-700 dark:text-slate-200">
                 {pendingTotal.toLocaleString()} pending items requiring admin attention.
               </Typography>
               {error ? <Typography className="text-red-600">{error}</Typography> : null}
-              {isLoadingSummary ? <Typography className="text-slate-600">Loading summary...</Typography> : null}
+              {isLoadingSummary ? <Typography className="text-slate-700 dark:text-slate-200">Loading summary...</Typography> : null}
             </CardBody>
           </Card>
 
-          <Card className="border border-slate-200 bg-white shadow-none">
+          <Card className="border border-slate-200 bg-white shadow-none dark:border-slate-700 dark:bg-slate-900">
             <CardBody className="space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <Typography variant="h5" className="text-blue-gray-900">Posts</Typography>
+                <Typography variant="h5" className="text-blue-gray-900 dark:text-slate-100">Posts</Typography>
                 <div className="flex flex-wrap gap-2">
                   <select
-                    className="rounded border border-slate-300 px-2 py-1 text-sm"
+                    className="rounded border border-slate-300 bg-white px-2 py-1 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                     value={postQueue.moderationFilter}
                     onChange={(event) =>
                       updateFilters("Post", setPostQueue, {
@@ -439,7 +456,7 @@ export default function AdminModerationPage() {
                     <option value="all">all</option>
                   </select>
                   <select
-                    className="rounded border border-slate-300 px-2 py-1 text-sm"
+                    className="rounded border border-slate-300 bg-white px-2 py-1 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                     value={postQueue.recordFilter}
                     onChange={(event) =>
                       updateFilters("Post", setPostQueue, {
@@ -458,18 +475,31 @@ export default function AdminModerationPage() {
               </div>
 
               {postQueue.items.length === 0 ? (
-                <Typography className="text-slate-600">No matching posts.</Typography>
+                <Typography className="text-slate-700 dark:text-slate-200">No matching posts.</Typography>
               ) : (
                 postQueue.items.map((post) => (
-                  <div key={post.id} className="rounded-xl border border-slate-200 p-3">
-                    <Typography className="font-semibold text-blue-gray-900">{post.title}</Typography>
-                    <Typography className="text-sm text-slate-600">{post.content}</Typography>
-                    <Typography className="pt-1 text-xs text-slate-500">
+                  <div key={post.id} className="rounded-xl border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-800/70">
+                    <Typography className="font-semibold text-blue-gray-900 dark:text-slate-100">{post.title}</Typography>
+                    <Typography className="text-sm text-slate-700 dark:text-slate-200">{post.content}</Typography>
+                    <Typography className="pt-1 text-xs text-slate-700 dark:text-slate-300">
                       {post.communities.join(", ") || "no communities"} • {formatDisplayDate(post.createdAt)}
                     </Typography>
-                    <Typography className="pt-1 text-xs text-slate-600">
-                      moderation: {post.moderationStatus} • status: {post.recordStatus}
-                    </Typography>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <Chip
+                        value={`Moderation: ${post.moderationStatus}`}
+                        size="sm"
+                        variant="ghost"
+                        color={getModerationChipColor(post.moderationStatus)}
+                        className="rounded-full"
+                      />
+                      <Chip
+                        value={`Status: ${post.recordStatus}`}
+                        size="sm"
+                        variant="ghost"
+                        color={getRecordChipColor(post.recordStatus)}
+                        className="rounded-full"
+                      />
+                    </div>
                     <div className="mt-3 flex gap-2">
                       <Button size="sm" color="green" onClick={() => moderate("Post", post.id, "approve")}>Approve</Button>
                       <Button size="sm" color="red" variant="outlined" onClick={() => moderate("Post", post.id, "reject")}>Reject</Button>
@@ -505,13 +535,13 @@ export default function AdminModerationPage() {
             </CardBody>
           </Card>
 
-          <Card className="border border-slate-200 bg-white shadow-none">
+          <Card className="border border-slate-200 bg-white shadow-none dark:border-slate-700 dark:bg-slate-900">
             <CardBody className="space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <Typography variant="h5" className="text-blue-gray-900">Communities</Typography>
+                <Typography variant="h5" className="text-blue-gray-900 dark:text-slate-100">Communities</Typography>
                 <div className="flex flex-wrap gap-2">
                   <select
-                    className="rounded border border-slate-300 px-2 py-1 text-sm"
+                    className="rounded border border-slate-300 bg-white px-2 py-1 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                     value={communityQueue.moderationFilter}
                     onChange={(event) =>
                       updateFilters("Community", setCommunityQueue, {
@@ -526,7 +556,7 @@ export default function AdminModerationPage() {
                     <option value="all">all</option>
                   </select>
                   <select
-                    className="rounded border border-slate-300 px-2 py-1 text-sm"
+                    className="rounded border border-slate-300 bg-white px-2 py-1 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                     value={communityQueue.recordFilter}
                     onChange={(event) =>
                       updateFilters("Community", setCommunityQueue, {
@@ -545,15 +575,28 @@ export default function AdminModerationPage() {
               </div>
 
               {communityQueue.items.length === 0 ? (
-                <Typography className="text-slate-600">No matching communities.</Typography>
+                <Typography className="text-slate-700 dark:text-slate-200">No matching communities.</Typography>
               ) : (
                 communityQueue.items.map((community) => (
-                  <div key={community.id} className="rounded-xl border border-slate-200 p-3">
-                    <Typography className="font-semibold text-blue-gray-900">{community.name}</Typography>
-                    <Typography className="pt-1 text-xs text-slate-500">{formatDisplayDate(community.createdAt)}</Typography>
-                    <Typography className="pt-1 text-xs text-slate-600">
-                      moderation: {community.moderationStatus} • status: {community.recordStatus}
-                    </Typography>
+                  <div key={community.id} className="rounded-xl border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-800/70">
+                    <Typography className="font-semibold text-blue-gray-900 dark:text-slate-100">{community.name}</Typography>
+                    <Typography className="pt-1 text-xs text-slate-700 dark:text-slate-300">{formatDisplayDate(community.createdAt)}</Typography>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <Chip
+                        value={`Moderation: ${community.moderationStatus}`}
+                        size="sm"
+                        variant="ghost"
+                        color={getModerationChipColor(community.moderationStatus)}
+                        className="rounded-full"
+                      />
+                      <Chip
+                        value={`Status: ${community.recordStatus}`}
+                        size="sm"
+                        variant="ghost"
+                        color={getRecordChipColor(community.recordStatus)}
+                        className="rounded-full"
+                      />
+                    </div>
                     <div className="mt-3 flex gap-2">
                       <Button size="sm" color="green" onClick={() => moderate("Community", community.id, "approve")}>Approve</Button>
                       <Button size="sm" color="red" variant="outlined" onClick={() => moderate("Community", community.id, "reject")}>Reject</Button>
@@ -589,13 +632,13 @@ export default function AdminModerationPage() {
             </CardBody>
           </Card>
 
-          <Card className="border border-slate-200 bg-white shadow-none">
+          <Card className="border border-slate-200 bg-white shadow-none dark:border-slate-700 dark:bg-slate-900">
             <CardBody className="space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <Typography variant="h5" className="text-blue-gray-900">Comments</Typography>
+                <Typography variant="h5" className="text-blue-gray-900 dark:text-slate-100">Comments</Typography>
                 <div className="flex flex-wrap gap-2">
                   <select
-                    className="rounded border border-slate-300 px-2 py-1 text-sm"
+                    className="rounded border border-slate-300 bg-white px-2 py-1 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                     value={commentQueue.moderationFilter}
                     onChange={(event) =>
                       updateFilters("Comment", setCommentQueue, {
@@ -610,7 +653,7 @@ export default function AdminModerationPage() {
                     <option value="all">all</option>
                   </select>
                   <select
-                    className="rounded border border-slate-300 px-2 py-1 text-sm"
+                    className="rounded border border-slate-300 bg-white px-2 py-1 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                     value={commentQueue.recordFilter}
                     onChange={(event) =>
                       updateFilters("Comment", setCommentQueue, {
@@ -629,16 +672,29 @@ export default function AdminModerationPage() {
               </div>
 
               {commentQueue.items.length === 0 ? (
-                <Typography className="text-slate-600">No matching comments.</Typography>
+                <Typography className="text-slate-700 dark:text-slate-200">No matching comments.</Typography>
               ) : (
                 commentQueue.items.map((comment) => (
-                  <div key={comment.id} className="rounded-xl border border-slate-200 p-3">
-                    <Typography className="text-sm text-slate-600">{comment.targetType} • {comment.targetId}</Typography>
-                    <Typography className="font-medium text-blue-gray-900">{comment.text}</Typography>
-                    <Typography className="pt-1 text-xs text-slate-500">{formatDisplayDate(comment.createdAt)}</Typography>
-                    <Typography className="pt-1 text-xs text-slate-600">
-                      moderation: {comment.moderationStatus} • status: {comment.recordStatus}
-                    </Typography>
+                  <div key={comment.id} className="rounded-xl border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-800/70">
+                    <Typography className="text-sm text-slate-700 dark:text-slate-200">{comment.targetType} • {comment.targetId}</Typography>
+                    <Typography className="font-medium text-blue-gray-900 dark:text-slate-100">{comment.text}</Typography>
+                    <Typography className="pt-1 text-xs text-slate-700 dark:text-slate-300">{formatDisplayDate(comment.createdAt)}</Typography>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <Chip
+                        value={`Moderation: ${comment.moderationStatus}`}
+                        size="sm"
+                        variant="ghost"
+                        color={getModerationChipColor(comment.moderationStatus)}
+                        className="rounded-full"
+                      />
+                      <Chip
+                        value={`Status: ${comment.recordStatus}`}
+                        size="sm"
+                        variant="ghost"
+                        color={getRecordChipColor(comment.recordStatus)}
+                        className="rounded-full"
+                      />
+                    </div>
                     <div className="mt-3 flex gap-2">
                       <Button size="sm" color="green" onClick={() => moderate("Comment", comment.id, "approve")}>Approve</Button>
                       <Button size="sm" color="red" variant="outlined" onClick={() => moderate("Comment", comment.id, "reject")}>Reject</Button>
