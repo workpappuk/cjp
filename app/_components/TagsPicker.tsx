@@ -1,6 +1,6 @@
 "use client";
 
-import { type KeyboardEvent, useMemo, useState } from "react";
+import { type KeyboardEvent, useEffect, useMemo, useState } from "react";
 import { Button, Input, Typography } from "@/app/_types/mtw";
 import { dedupeTagNames, normalizeTagName } from "@/app/_utils/tags";
 
@@ -32,16 +32,76 @@ export default function TagsPicker({
   maxTags = 8,
 }: TagsPickerProps) {
   const [draftTag, setDraftTag] = useState("");
+  const [debouncedDraftTag, setDebouncedDraftTag] = useState("");
+  const [remoteSuggestedTags, setRemoteSuggestedTags] = useState<string[]>([]);
   const [errorText, setErrorText] = useState("");
 
   const normalizedValue = useMemo(() => dedupeTagNames(value), [value]);
 
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedDraftTag(normalizeTagName(draftTag));
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [draftTag]);
+
+  useEffect(() => {
+    const query = debouncedDraftTag;
+
+    if (!query) {
+      setRemoteSuggestedTags([]);
+      return;
+    }
+
+    const controller = new AbortController();
+
+    const run = async () => {
+      try {
+        const response = await fetch(`/api/tags?search=${encodeURIComponent(query)}`, {
+          cache: "no-store",
+          signal: controller.signal,
+        });
+
+        if (!response.ok) {
+          return;
+        }
+
+        const payload = (await response.json()) as Array<{ name?: string }>;
+        const names = Array.isArray(payload)
+          ? payload
+              .map((item) => normalizeTagName(item?.name ?? ""))
+              .filter(Boolean)
+          : [];
+
+        setRemoteSuggestedTags(dedupeTagNames(names));
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") {
+          return;
+        }
+      }
+    };
+
+    void run();
+
+    return () => {
+      controller.abort();
+    };
+  }, [debouncedDraftTag]);
+
   const availableSuggestions = useMemo(() => {
+    if (!debouncedDraftTag) {
+      return [];
+    }
+
     const selected = new Set(normalizedValue);
-    return dedupeTagNames(suggestedTags)
+    const source = remoteSuggestedTags.length > 0 ? remoteSuggestedTags : suggestedTags;
+
+    return dedupeTagNames(source)
+      .filter((tag) => tag.includes(debouncedDraftTag))
       .filter((tag) => !selected.has(tag))
       .slice(0, 12);
-  }, [normalizedValue, suggestedTags]);
+  }, [debouncedDraftTag, normalizedValue, remoteSuggestedTags, suggestedTags]);
 
   const addTag = (raw: string) => {
     const nextTag = normalizeTagName(raw);

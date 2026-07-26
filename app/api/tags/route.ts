@@ -32,6 +32,10 @@ function normalizeTagName(name: string) {
   return name.trim().toLowerCase();
 }
 
+function escapeRegex(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 function isTargetType(value: string): value is TargetType {
   return value === "Post" || value === "Community";
 }
@@ -188,6 +192,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const targetTypeRaw = (searchParams.get("targetType") ?? "").trim();
     const targetIdRaw = (searchParams.get("targetId") ?? "").trim();
+    const searchRaw = normalizeTagName(searchParams.get("search") ?? "");
 
     if ((targetTypeRaw && !targetIdRaw) || (!targetTypeRaw && targetIdRaw)) {
       return NextResponse.json(
@@ -245,6 +250,36 @@ export async function GET(request: Request) {
           normalizedName: tag.normalizedName,
           targetType: parsed.targetType,
           targetId: parsed.targetIdRaw,
+          createdBy: tag.createdBy ? String(tag.createdBy) : "",
+          lastUpdatedBy: tag.lastUpdatedBy ? String(tag.lastUpdatedBy) : "",
+          createdAt: tag.createdAt,
+          updatedAt: tag.updatedAt,
+        })),
+        {
+          headers: {
+            "x-request-id": requestId,
+          },
+        },
+      );
+    }
+
+    if (searchRaw) {
+      const safePattern = `^${escapeRegex(searchRaw)}`;
+      const tags = await TagModel.find({
+        isActive: true,
+        normalizedName: { $regex: safePattern, $options: "i" },
+      })
+        .sort({ createdAt: -1 })
+        .limit(20)
+        .lean();
+
+      return NextResponse.json(
+        tags.map((tag) => ({
+          id: String(tag._id),
+          name: tag.name,
+          normalizedName: tag.normalizedName,
+          targetType: null,
+          targetId: null,
           createdBy: tag.createdBy ? String(tag.createdBy) : "",
           lastUpdatedBy: tag.lastUpdatedBy ? String(tag.lastUpdatedBy) : "",
           createdAt: tag.createdAt,
