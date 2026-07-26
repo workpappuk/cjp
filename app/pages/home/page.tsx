@@ -57,6 +57,11 @@ export default function HomePage() {
   const [communityTagsByName, setCommunityTagsByName] = useState<Record<string, string[]>>({});
   const [availableTags, setAvailableTags] = useState<string[]>([]);
   const [joinedCommunities, setJoinedCommunities] = useState<string[]>([]);
+  const [selectedPostCommunities, setSelectedPostCommunities] = useState<string[]>([]);
+  const [postCommunitySearch, setPostCommunitySearch] = useState("");
+  const [debouncedPostCommunitySearch, setDebouncedPostCommunitySearch] = useState("");
+  const [apiPostCommunityOptions, setApiPostCommunityOptions] = useState<string[]>([]);
+  const [isLoadingPostCommunityOptions, setIsLoadingPostCommunityOptions] = useState(false);
   const [communitySearch, setCommunitySearch] = useState("");
   const [isLeftSidebarOpen, setIsLeftSidebarOpen] = useState(true);
   const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(true);
@@ -79,9 +84,11 @@ export default function HomePage() {
   };
 
   const { buttonColor, toggle: toggleColors, accent: accentClasses } = getThemeColorTokens(theme);
-  const disabled =
+  const basePostDisabled =
     title.trim().length === 0 ||
     content.trim().length === 0;
+  const hasJoinedCommunity = joinedCommunities.length > 0;
+  const postDisabled = basePostDisabled || selectedPostCommunities.length === 0;
 
   const communityDisabled = communityName.trim().length < 3;
   const normalizedCommunityName = communityName.trim().toLowerCase();
@@ -138,6 +145,14 @@ export default function HomePage() {
     );
   }, [availableCommunities, normalizedCommunitySearch]);
 
+  const filteredPostDestinationOptions = useMemo(() => {
+    const trimmedSearch = debouncedPostCommunitySearch.trim().toLowerCase();
+    const source = trimmedSearch ? apiPostCommunityOptions : joinedCommunities;
+    const uniqueSource = [...new Set(source.map((item) => item.trim().toLowerCase()).filter(Boolean))];
+
+    return uniqueSource.filter((community) => joinedCommunitiesSet.has(community));
+  }, [apiPostCommunityOptions, debouncedPostCommunitySearch, joinedCommunities, joinedCommunitiesSet]);
+
   const discoverVirtualizer = useVirtualizer({
     count: filteredAvailableCommunities.length,
     getScrollElement: () => discoverListRef.current,
@@ -161,6 +176,71 @@ export default function HomePage() {
   useEffect(() => {
     feedVirtualizer.scrollToOffset(0);
   }, [joinedCommunities.length, feedVirtualizer]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedPostCommunitySearch(postCommunitySearch.trim());
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [postCommunitySearch]);
+
+  useEffect(() => {
+    setSelectedPostCommunities((prev) => {
+      const joinedSet = new Set(joinedCommunities);
+      const filtered = prev.filter((community) => joinedSet.has(community));
+      return filtered.length > 0 ? filtered : [...joinedCommunities];
+    });
+  }, [joinedCommunities]);
+
+  useEffect(() => {
+    if (!debouncedPostCommunitySearch) {
+      setApiPostCommunityOptions([]);
+      setIsLoadingPostCommunityOptions(false);
+      return;
+    }
+
+    const controller = new AbortController();
+
+    const fetchCommunities = async () => {
+      setIsLoadingPostCommunityOptions(true);
+
+      try {
+        const response = await fetch(
+          `/api/communities?search=${encodeURIComponent(debouncedPostCommunitySearch)}`,
+          {
+            cache: "no-store",
+            signal: controller.signal,
+          },
+        );
+
+        if (!response.ok) {
+          return;
+        }
+
+        const payload = (await response.json()) as Array<{ name?: string }>;
+        const names = Array.isArray(payload)
+          ? payload
+              .map((item) => item.name?.trim().toLowerCase() ?? "")
+              .filter(Boolean)
+          : [];
+
+        setApiPostCommunityOptions([...new Set(names)]);
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") {
+          return;
+        }
+      } finally {
+        setIsLoadingPostCommunityOptions(false);
+      }
+    };
+
+    void fetchCommunities();
+
+    return () => {
+      controller.abort();
+    };
+  }, [debouncedPostCommunitySearch]);
 
   useEffect(() => {
     const shouldLockBodyScroll = isMobileLeftModalOpen || isMobileRightModalOpen;
@@ -421,8 +501,13 @@ export default function HomePage() {
 
   const handleCreatePost = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (disabled) return;
+    if (postDisabled) return;
     setSubmissionNotice("");
+
+    const targetCommunities = selectedPostCommunities.map((community) => community.trim()).filter(Boolean);
+    if (targetCommunities.length === 0) {
+      return;
+    }
 
     const response = await fetch("/api/posts", {
       method: "POST",
@@ -432,7 +517,7 @@ export default function HomePage() {
       body: JSON.stringify({
         title: title.trim(),
         content: content.trim(),
-        communities: joinedCommunities.length > 0 ? [joinedCommunities[0]] : [],
+        communities: targetCommunities,
       }),
     });
 
@@ -479,6 +564,16 @@ export default function HomePage() {
     setContent("");
     setAvailableTags((prev) => dedupeTagNames([...prev, ...postTags]));
     setPostTags([]);
+  };
+
+  const handleTogglePostCommunity = (communityName: string) => {
+    setSelectedPostCommunities((prev) => {
+      if (prev.includes(communityName)) {
+        return prev.filter((item) => item !== communityName);
+      }
+
+      return [...prev, communityName];
+    });
   };
 
   const leftSidebarContent = (
@@ -673,6 +768,95 @@ export default function HomePage() {
       ) : (
         <Card className={`border shadow-none dark:bg-slate-900 ${accentClasses.sectionBorder}`}>
           <CardBody className="space-y-4 p-5">
+            <div className="space-y-2">
+              <Typography variant="small" className="text-slate-700 dark:text-slate-300">
+                Post destinations
+              </Typography>
+              {hasJoinedCommunity ? (
+                <>
+                  <details className="group relative">
+                    <summary className="flex h-10 cursor-pointer items-center justify-between rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
+                      <span>
+                        {selectedPostCommunities.length > 0
+                          ? `${selectedPostCommunities.length} selected`
+                          : "Select communities"}
+                      </span>
+                      <span className="text-xs text-slate-500 dark:text-slate-400">Toggle</span>
+                    </summary>
+
+                    <div className="absolute z-20 mt-2 max-h-56 w-full overflow-y-auto rounded-lg border border-slate-300 bg-white p-2 shadow-lg dark:border-slate-700 dark:bg-slate-900">
+                      <div className="mb-2 border-b border-slate-200 pb-2 dark:border-slate-700">
+                        <input
+                          type="text"
+                          value={postCommunitySearch}
+                          onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                            setPostCommunitySearch(event.target.value)
+                          }
+                          placeholder="Search joined communities"
+                          className="h-9 w-full rounded-md border border-slate-300 bg-white px-2 text-sm text-slate-700 outline-none focus:border-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:placeholder:text-slate-400"
+                        />
+                      </div>
+
+                      {isLoadingPostCommunityOptions ? (
+                        <div className="flex items-center gap-2 px-2 py-2 text-xs text-slate-600 dark:text-slate-300">
+                          <Spinner className="h-4 w-4" />
+                          Searching communities...
+                        </div>
+                      ) : null}
+
+                      {filteredPostDestinationOptions.map((community) => {
+                        const isSelected = selectedPostCommunities.includes(community);
+
+                        return (
+                          <label
+                            key={`post-target-${community}`}
+                            className="flex cursor-pointer items-center justify-between rounded-md px-2 py-1.5 text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+                          >
+                            <span className="truncate pr-3">{community}</span>
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => handleTogglePostCommunity(community)}
+                              className="h-4 w-4 accent-slate-700 dark:accent-slate-200"
+                            />
+                          </label>
+                        );
+                      })}
+
+                      {!isLoadingPostCommunityOptions && filteredPostDestinationOptions.length === 0 ? (
+                        <Typography variant="small" className="px-2 py-1 text-slate-600 dark:text-slate-300">
+                          No joined communities match this search.
+                        </Typography>
+                      ) : null}
+                    </div>
+                  </details>
+
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {selectedPostCommunities.length > 0 ? (
+                      selectedPostCommunities.map((community) => (
+                        <Chip
+                          key={`selected-post-community-${community}`}
+                          value={community}
+                          size="sm"
+                          variant="ghost"
+                          color={buttonColor}
+                          className="rounded-full"
+                        />
+                      ))
+                    ) : (
+                      <Typography variant="small" className="text-slate-700 dark:text-slate-300">
+                        No community selected yet.
+                      </Typography>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <Typography variant="small" className="text-slate-700 dark:text-slate-300">
+                  Join a community to choose where your post will be published.
+                </Typography>
+              )}
+            </div>
+
             <PostComposer
               heading="Create New Post"
               title={title}
@@ -680,9 +864,15 @@ export default function HomePage() {
               onTitleChange={setTitle}
               onContentChange={setContent}
               onSubmit={handleCreatePost}
-              disabled={disabled}
+              disabled={postDisabled}
               buttonLabel="Publish Post"
-              helperText="New posts are submitted for admin approval before they appear publicly."
+              helperText={
+                hasJoinedCommunity
+                  ? selectedPostCommunities.length > 0
+                    ? `This post will be submitted to ${selectedPostCommunities.length} ${selectedPostCommunities.length === 1 ? "community" : "communities"}. New posts are submitted for admin approval before they appear publicly.`
+                    : "Select at least one community for this post."
+                  : "Join at least one community before publishing a post."
+              }
               color={buttonColor}
               extraSection={(
                 <TagsPicker
@@ -691,7 +881,7 @@ export default function HomePage() {
                   onChange={setPostTags}
                   suggestedTags={availableTags}
                   color={buttonColor}
-                  disabled={disabled}
+                  disabled={postDisabled}
                 />
               )}
             />

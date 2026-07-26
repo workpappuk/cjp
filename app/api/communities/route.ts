@@ -69,10 +69,18 @@ export async function GET(request: Request) {
     await connectToDatabase();
     const actor = await getSessionActor();
     const canViewUnapproved = Boolean(actor?.isAdmin);
+    const { searchParams } = new URL(request.url);
+    const search = searchParams.get("search")?.trim().toLowerCase() ?? "";
 
-    const communities = await CommunityModel.find(
-      canViewUnapproved ? {} : { moderationStatus: "approved" },
-    )
+    const query: Record<string, unknown> = canViewUnapproved
+      ? {}
+      : { moderationStatus: "approved" };
+
+    if (search) {
+      query.name = { $regex: search, $options: "i" };
+    }
+
+    const communities = await CommunityModel.find(query)
       .populate("tags", "name")
       .sort({ name: 1 })
       .lean();
