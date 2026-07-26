@@ -10,12 +10,6 @@ declare global {
   var mongooseGlobal: MongooseGlobal | undefined;
 }
 
-const MONGODB_URI = process.env.MONGODB_URI ?? "";
-
-if (!MONGODB_URI) {
-  throw new Error("Missing MONGODB_URI environment variable.");
-}
-
 const globalForMongoose = globalThis as typeof globalThis & {
   mongooseGlobal?: MongooseGlobal;
 };
@@ -28,12 +22,17 @@ const cached = globalForMongoose.mongooseGlobal ?? {
 globalForMongoose.mongooseGlobal = cached;
 
 export async function connectToDatabase() {
+  const mongodbUri = process.env.MONGODB_URI ?? "";
+  if (!mongodbUri) {
+    throw new Error("Missing MONGODB_URI environment variable.");
+  }
+
   if (cached.conn) {
     return cached.conn;
   }
 
   if (!cached.promise) {
-    cached.promise = mongoose.connect(MONGODB_URI, {
+    cached.promise = mongoose.connect(mongodbUri, {
       dbName: process.env.MONGODB_DB,
       bufferCommands: false,
       serverSelectionTimeoutMS: 8000,

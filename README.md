@@ -30,6 +30,32 @@ npm run dev
 
 Open http://localhost:3000
 
+## Playwright E2E
+
+This repo includes Playwright with a basic smoke test.
+
+Files:
+
+- `playwright.config.ts`
+- `tests/smoke.spec.ts`
+
+Commands:
+
+```bash
+npx playwright install chromium
+npm run test:e2e
+npm run test:e2e:ui
+npm run test:e2e:debug
+npm run test:e2e:report
+```
+
+If browser download fails with a TLS/certificate error in a corporate network, configure your Node trust store and retry:
+
+```bash
+export NODE_EXTRA_CA_CERTS=/absolute/path/to/corporate-root-ca.pem
+npx playwright install chromium
+```
+
 ## Auth Notes
 
 The app stores social provider and access token in local storage on login.
