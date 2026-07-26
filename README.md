@@ -20,6 +20,7 @@ Create or update `.env.local`:
 ```bash
 MONGODB_URI=mongodb+srv://username:password@cluster.example.mongodb.net
 MONGODB_DB=threadforge
+MONGODB_AUDIT_DB=threadforge_audit
 ```
 
 Start development server:
@@ -94,6 +95,37 @@ export async function GET() {
   return Response.json({ ok: true });
 }
 ```
+
+### Model Delta Auditing
+
+Model-level writes are now audited automatically for these collections:
+
+- `Post`
+- `Community`
+- `Comment`
+- `Tag`
+- `UserProfile`
+
+Audit behavior:
+
+- Captures field-level delta (`from`/`to`) for create/update operations
+- Writes audit entries to a separate database (`MONGODB_AUDIT_DB`)
+- Uses one audit collection per model (for example `posts_audit`)
+- Runs as best-effort and never blocks primary writes
+
+### Admin Audit Query API
+
+Read audit history with admin access:
+
+- GET `/api/admin/audit?modelName=Post&documentId=<objectId>&operation=update&limit=50`
+
+Query params:
+
+- `modelName` (required): `Post`, `Community`, `Comment`, `Tag`, `UserProfile`
+- `documentId` (optional): ObjectId string for one document
+- `operation` (optional): `create`, `update`, or `all` (default)
+- `limit` (optional): 1-200 (default 50)
+- `cursor` (optional): pagination cursor from the previous response
 
 ## Startup Behavior
 

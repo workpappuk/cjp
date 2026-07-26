@@ -1,5 +1,6 @@
 import "server-only";
 import { Schema, model, models, type InferSchemaType } from "mongoose";
+import { applyModelDeltaAuditPlugin } from "@/app/_lib/audit";
 
 const tagSchema = new Schema(
   {
@@ -57,6 +58,8 @@ tagSchema.pre("validate", function syncNormalizedName() {
     this.normalizedName = this.name.trim().toLowerCase();
   }
 });
+
+tagSchema.plugin(applyModelDeltaAuditPlugin, { source: "tags" });
 
 export type TagDocument = InferSchemaType<typeof tagSchema>;
 

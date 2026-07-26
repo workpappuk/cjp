@@ -1,5 +1,6 @@
 import "server-only";
 import { Schema, model, models, type InferSchemaType } from "mongoose";
+import { applyModelDeltaAuditPlugin } from "@/app/_lib/audit";
 
 const userProfileSchema = new Schema(
   {
@@ -69,6 +70,11 @@ const userProfileSchema = new Schema(
     versionKey: false,
   },
 );
+
+userProfileSchema.plugin(applyModelDeltaAuditPlugin, {
+  source: "user-profile",
+  ignorePaths: ["lastLoginAt"],
+});
 
 export type UserProfileDocument = InferSchemaType<typeof userProfileSchema>;
 

@@ -1,5 +1,6 @@
 import "server-only";
 import { Schema, model, models, type InferSchemaType } from "mongoose";
+import { applyModelDeltaAuditPlugin } from "@/app/_lib/audit";
 
 const postSchema = new Schema(
   {
@@ -68,6 +69,7 @@ postSchema.index({ communities: 1 });
 postSchema.index({ tags: 1 });
 postSchema.index({ moderationStatus: 1, createdAt: -1 });
 postSchema.index({ recordStatus: 1, createdAt: -1 });
+postSchema.plugin(applyModelDeltaAuditPlugin, { source: "posts" });
 
 export type PostDocument = InferSchemaType<typeof postSchema>;
 

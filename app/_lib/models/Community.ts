@@ -1,5 +1,6 @@
 import "server-only";
 import { Schema, model, models, type InferSchemaType } from "mongoose";
+import { applyModelDeltaAuditPlugin } from "@/app/_lib/audit";
 
 const communitySchema = new Schema(
   {
@@ -57,6 +58,7 @@ const communitySchema = new Schema(
 communitySchema.index({ tags: 1 });
 communitySchema.index({ moderationStatus: 1, createdAt: -1 });
 communitySchema.index({ recordStatus: 1, createdAt: -1 });
+communitySchema.plugin(applyModelDeltaAuditPlugin, { source: "communities" });
 
 export type CommunityDocument = InferSchemaType<typeof communitySchema>;
 

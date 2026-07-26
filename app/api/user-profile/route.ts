@@ -15,6 +15,8 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+const LAST_LOGIN_UPDATE_MIN_INTERVAL_MS = 1 * 60 * 1000;
+
 type PersistedProfile = {
   _id: Types.ObjectId | string;
   email?: string;
@@ -253,9 +255,9 @@ export async function GET(request: Request) {
             name: auth.session?.user?.name ?? "",
             image: auth.session?.user?.image ?? "",
             joinedCommunities: [],
+            lastLoginAt: new Date(),
           },
           $set: {
-            lastLoginAt: new Date(),
             provider: auth.session?.provider ?? "google",
           },
         },
@@ -267,6 +269,17 @@ export async function GET(request: Request) {
         throw error;
       }
     }
+
+    // Avoid writing login heartbeat on every profile read; only refresh every few minutes.
+    await UserProfileModel.updateOne(
+      {
+        email: auth.email,
+        lastLoginAt: { $lt: new Date(Date.now() - LAST_LOGIN_UPDATE_MIN_INTERVAL_MS) },
+      },
+      {
+        $set: { lastLoginAt: new Date() },
+      },
+    );
 
     let profile = await UserProfileModel.findOne({ email: auth.email })
       .populate("joinedCommunities", "name")

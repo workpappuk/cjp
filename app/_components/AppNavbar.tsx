@@ -33,32 +33,28 @@ export default function AppNavbar({
     email?: string | null;
     image?: string | null;
     isAdmin?: boolean;
-  } | null>(null);
-  const profileMenuRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
+  } | null>(() => {
     if (typeof window === "undefined") {
-      return;
+      return null;
     }
 
     const raw = window.localStorage.getItem(USER_PROFILE_KEY);
     if (!raw) {
-      setLocalUser(null);
-      return;
+      return null;
     }
 
     try {
-      const parsed = JSON.parse(raw) as {
+      return JSON.parse(raw) as {
         name?: string | null;
         email?: string | null;
         image?: string | null;
         isAdmin?: boolean;
       };
-      setLocalUser(parsed);
     } catch {
-      setLocalUser(null);
+      return null;
     }
-  }, [session?.user?.name, session?.user?.email, session?.user?.image]);
+  });
+  const profileMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!session?.user?.email) {
@@ -263,13 +259,29 @@ export default function AppNavbar({
                 ) : null}
 
                 {isAdmin ? (
-                  <Link
-                    href="/pages/admin"
-                    role="menuitem"
-                    className="mb-2 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-blue-700 hover:bg-blue-50"
-                  >
-                    Admin Moderation
-                  </Link>
+                  <div className="mb-2 space-y-1">
+                    <Link
+                      href="/pages/admin"
+                      role="menuitem"
+                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-blue-700 hover:bg-blue-50"
+                    >
+                      Admin Dashboard
+                    </Link>
+                    <Link
+                      href="/pages/admin/moderation"
+                      role="menuitem"
+                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-blue-700 hover:bg-blue-50"
+                    >
+                      Moderation
+                    </Link>
+                    <Link
+                      href="/pages/admin/audit"
+                      role="menuitem"
+                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-blue-700 hover:bg-blue-50"
+                    >
+                      Audit
+                    </Link>
+                  </div>
                 ) : null}
 
                 <button

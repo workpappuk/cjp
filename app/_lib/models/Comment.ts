@@ -1,5 +1,6 @@
 import "server-only";
 import { Schema, model, models, type InferSchemaType } from "mongoose";
+import { applyModelDeltaAuditPlugin } from "@/app/_lib/audit";
 
 const commentSchema = new Schema(
   {
@@ -68,6 +69,7 @@ const commentSchema = new Schema(
 commentSchema.index({ targetType: 1, targetId: 1, createdAt: -1 });
 commentSchema.index({ moderationStatus: 1, createdAt: -1 });
 commentSchema.index({ recordStatus: 1, createdAt: -1 });
+commentSchema.plugin(applyModelDeltaAuditPlugin, { source: "comments" });
 
 export type CommentDocument = InferSchemaType<typeof commentSchema>;
 
