@@ -13,9 +13,9 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 type ParamsContext = {
-  params: {
+  params: Promise<{
     postId: string;
-  };
+  }>;
 };
 
 type JoinedCommunityValue =
@@ -49,11 +49,13 @@ function toCommunityNames(values: JoinedCommunityValue[] | undefined) {
 
 export async function GET(_request: Request, { params }: ParamsContext) {
   const requestId = getOrCreateRequestId(_request);
+  let postId = "";
 
   try {
     await connectToDatabase();
+    ({ postId } = await params);
 
-    if (!mongoose.Types.ObjectId.isValid(params.postId)) {
+    if (!mongoose.Types.ObjectId.isValid(postId)) {
       return NextResponse.json(
         { error: "Invalid post id.", requestId },
         {
@@ -65,7 +67,7 @@ export async function GET(_request: Request, { params }: ParamsContext) {
       );
     }
 
-    const post = await PostModel.findById(params.postId)
+    const post = await PostModel.findById(postId)
       .populate("communities", "name")
       .lean();
     if (!post) {
@@ -101,7 +103,7 @@ export async function GET(_request: Request, { params }: ParamsContext) {
       method: "GET",
       error,
       requestId,
-      context: { postId: params.postId },
+      context: { postId },
     });
     const message = getApiErrorMessage(error, "Failed to fetch post");
     return NextResponse.json(

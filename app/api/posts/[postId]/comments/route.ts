@@ -40,9 +40,9 @@ async function getCanonicalActorProfileId(email: string) {
 }
 
 type ParamsContext = {
-  params: {
+  params: Promise<{
     postId: string;
-  };
+  }>;
 };
 
 function isValidObjectId(value: string) {
@@ -51,11 +51,12 @@ function isValidObjectId(value: string) {
 
 export async function GET(_request: Request, { params }: ParamsContext) {
   const requestId = getOrCreateRequestId(_request);
+  let postId = "";
 
   try {
     await connectToDatabase();
 
-    const postId = params.postId;
+    ({ postId } = await params);
     if (!isValidObjectId(postId)) {
       return NextResponse.json(
         { error: "Invalid post id.", requestId },
@@ -103,7 +104,7 @@ export async function GET(_request: Request, { params }: ParamsContext) {
       method: "GET",
       error,
       requestId,
-      context: { postId: params.postId },
+      context: { postId },
     });
     const message = getApiErrorMessage(error, "Failed to fetch comments");
     return NextResponse.json(
@@ -120,6 +121,7 @@ export async function GET(_request: Request, { params }: ParamsContext) {
 
 export async function POST(request: Request, { params }: ParamsContext) {
   const requestId = getOrCreateRequestId(request);
+  let postId = "";
 
   const rateLimit = await checkRateLimit({
     scope: "comments:create",
@@ -150,7 +152,7 @@ export async function POST(request: Request, { params }: ParamsContext) {
     const actorEmail = session?.user?.email ? normalizeEmail(session.user.email) : "";
     const actorProfileId = await getCanonicalActorProfileId(actorEmail);
 
-    const postId = params.postId;
+    ({ postId } = await params);
     if (!isValidObjectId(postId)) {
       return NextResponse.json(
         { error: "Invalid post id.", requestId },
@@ -243,7 +245,7 @@ export async function POST(request: Request, { params }: ParamsContext) {
       method: "POST",
       error,
       requestId,
-      context: { postId: params.postId },
+      context: { postId },
     });
     const message = getApiErrorMessage(error, "Failed to create comment");
     return NextResponse.json(

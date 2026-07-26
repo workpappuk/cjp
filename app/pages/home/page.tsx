@@ -17,7 +17,9 @@ import { Button, Card, CardBody, Chip, Input, Typography } from "@/app/_types/mt
 import { useTheme } from "@/app/_context/theme-context";
 import AppNavbar from "@/app/_components/AppNavbar";
 import PostComposer from "@/app/_components/PostComposer";
+import TagsPicker from "@/app/_components/TagsPicker";
 import { isAuthenticated } from "@/app/_utils/auth";
+import { attachTagsToTarget, dedupeTagNames } from "@/app/_utils/tags";
 
 const HOME_UI_PREFS_KEY = "threadforge-home-ui-prefs";
 
@@ -45,9 +47,12 @@ export default function HomePage() {
   const { theme } = useTheme();
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+  const [postTags, setPostTags] = useState<string[]>([]);
   const [posts, setPosts] = useState<PostItem[]>([]);
   const [communityName, setCommunityName] = useState("");
+  const [communityTags, setCommunityTags] = useState<string[]>([]);
   const [communities, setCommunities] = useState<string[]>([]);
+  const [availableTags, setAvailableTags] = useState<string[]>([]);
   const [joinedCommunities, setJoinedCommunities] = useState<string[]>([]);
   const [communitySearch, setCommunitySearch] = useState("");
   const [isLeftSidebarOpen, setIsLeftSidebarOpen] = useState(true);
@@ -186,9 +191,10 @@ export default function HomePage() {
 
     const hydrateFromApi = async () => {
       try {
-        const [postsRes, communitiesRes, profileRes] = await Promise.all([
+        const [postsRes, communitiesRes, tagsRes, profileRes] = await Promise.all([
           fetch("/api/posts", { cache: "no-store" }),
           fetch("/api/communities", { cache: "no-store" }),
+          fetch("/api/tags", { cache: "no-store" }),
           fetch("/api/user-profile", { cache: "no-store" }),
         ]);
 
@@ -237,6 +243,19 @@ export default function HomePage() {
               : [],
           );
         }
+
+        if (tagsRes.ok) {
+          const parsedTags = (await tagsRes.json()) as Array<{ name?: string }>;
+          setAvailableTags(
+            dedupeTagNames(
+              Array.isArray(parsedTags)
+                ? parsedTags
+                    .map((item) => item.name?.trim() ?? "")
+                    .filter(Boolean)
+                : [],
+            ),
+          );
+        }
       } catch {
         if (!isMounted) {
           return;
@@ -244,6 +263,7 @@ export default function HomePage() {
 
         setPosts([]);
         setCommunities([]);
+        setAvailableTags([]);
         setJoinedCommunities([]);
       }
     };
@@ -319,8 +339,24 @@ export default function HomePage() {
       return;
     }
 
+    const created = (await response.json()) as {
+      id: string;
+      name: string;
+      createdAt: string;
+      updatedAt: string;
+      createdBy?: string;
+      lastUpdatedBy?: string;
+    };
+
+    await attachTagsToTarget({
+      targetType: "Community",
+      targetId: created.id,
+      tags: communityTags,
+    });
+
     const nextCommunities = [...communities, nextName.toLowerCase()];
     setCommunities(nextCommunities);
+    setAvailableTags((prev) => dedupeTagNames([...prev, ...communityTags]));
 
     const alreadyJoined = joinedCommunities.some(
       (item) => item.toLowerCase() === nextName.toLowerCase(),
@@ -332,6 +368,7 @@ export default function HomePage() {
     }
 
     setCommunityName("");
+    setCommunityTags([]);
   };
 
   const handleToggleJoinCommunity = async (name: string) => {
@@ -375,6 +412,12 @@ export default function HomePage() {
       createdAt: string;
     };
 
+    await attachTagsToTarget({
+      targetType: "Post",
+      targetId: created.id,
+      tags: postTags,
+    });
+
     const newPost = {
       id: created.id,
       title: created.title,
@@ -387,6 +430,8 @@ export default function HomePage() {
     setPosts(nextPosts);
     setTitle("");
     setContent("");
+    setAvailableTags((prev) => dedupeTagNames([...prev, ...postTags]));
+    setPostTags([]);
   };
 
   const leftSidebarContent = (
@@ -531,6 +576,15 @@ export default function HomePage() {
                 crossOrigin={undefined}
                 color={buttonColor}
               />
+              <TagsPicker
+                label="Community tags"
+                value={communityTags}
+                onChange={setCommunityTags}
+                suggestedTags={availableTags}
+                disabled={communityDisabled}
+                color={buttonColor}
+                helperText="Optional. Helps people discover this community."
+              />
               <Button color={buttonColor} type="submit" disabled={communityDisabled}>
                 Add Community
               </Button>
@@ -568,6 +622,16 @@ export default function HomePage() {
               buttonLabel="Publish Post"
               helperText="New posts are published to your first joined community."
               color={buttonColor}
+              extraSection={(
+                <TagsPicker
+                  label="Post tags"
+                  value={postTags}
+                  onChange={setPostTags}
+                  suggestedTags={availableTags}
+                  color={buttonColor}
+                  disabled={disabled}
+                />
+              )}
             />
           </CardBody>
         </Card>

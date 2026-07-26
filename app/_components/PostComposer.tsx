@@ -1,6 +1,6 @@
 "use client";
 
-import type { ChangeEvent, FormEvent } from "react";
+import type { ChangeEvent, FormEvent, ReactNode } from "react";
 import { Button, Input, Typography } from "@/app/_types/mtw";
 
 type PostComposerProps = {
@@ -17,6 +17,7 @@ type PostComposerProps = {
   contentLabel?: string;
   contentPlaceholder?: string;
   contentRows?: number;
+  extraSection?: ReactNode;
 };
 
 export default function PostComposer({
@@ -33,6 +34,7 @@ export default function PostComposer({
   contentLabel = "Post content",
   contentPlaceholder = "Share your thoughts with the community...",
   contentRows = 5,
+  extraSection,
 }: PostComposerProps) {
   return (
     <div className="space-y-4">
@@ -65,6 +67,8 @@ export default function PostComposer({
             onChange={(event: ChangeEvent<HTMLTextAreaElement>) => onContentChange(event.target.value)}
           />
         </div>
+
+        {extraSection}
 
         {helperText ? (
           <Typography variant="small" className="text-slate-500">

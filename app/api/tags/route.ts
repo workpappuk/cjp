@@ -101,7 +101,6 @@ async function upsertDictionaryTag(name: string, actorProfileId: Types.ObjectId)
     { normalizedName },
     {
       $setOnInsert: {
-        name,
         normalizedName,
         createdBy: actorProfileId,
       },
