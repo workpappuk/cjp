@@ -173,7 +173,7 @@ export default function TagsPicker({
         {label}
       </Typography>
 
-      <div className="flex items-end gap-2">
+      <div className="flex items-center gap-2">
         <div className="flex-1">
           <Input
             variant="standard"
@@ -198,7 +198,9 @@ export default function TagsPicker({
           Add
         </Button>
 
-        {isLoadingSuggestions ? <Spinner className="h-4 w-4" /> : null}
+        <span className="inline-flex h-4 w-4 items-center justify-center">
+          {isLoadingSuggestions ? <Spinner className="h-4 w-4" /> : null}
+        </span>
       </div>
 
       {errorText ? (

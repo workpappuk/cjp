@@ -368,7 +368,7 @@ export default function CommunityPage() {
         ) : null}
 
         <Card className={`rounded-2xl border bg-white shadow-none dark:bg-slate-900 ${accent.section}`}>
-          <CardBody className="space-y-2">
+          <CardBody className="space-y-3 p-5">
             <Typography variant="h3" className={accent.title}>
               {communityName}
             </Typography>
@@ -408,7 +408,7 @@ export default function CommunityPage() {
         </Card>
 
         <Card className={`rounded-2xl border bg-white shadow-none dark:bg-slate-900 ${accent.section}`}>
-          <CardBody className="space-y-4">
+          <CardBody className="space-y-4 p-5">
             {!isJoined ? (
               <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 dark:border-blue-800/80 dark:bg-blue-900/20">
                 <Typography variant="small" className="text-blue-gray-800 dark:text-slate-200">
@@ -467,7 +467,7 @@ export default function CommunityPage() {
 
         {filteredFeedItems.length === 0 ? (
           <Card className="border border-dashed border-slate-300 shadow-none dark:border-slate-700 dark:bg-slate-900">
-            <CardBody>
+            <CardBody className="p-5">
               <Typography className="text-slate-700 dark:text-slate-200">
                 No posts found in this community yet.
               </Typography>
@@ -477,7 +477,7 @@ export default function CommunityPage() {
           <div className="space-y-3">
             {visibleFeedItems.map((item) => (
               <Card key={item.id} className="border border-slate-200 shadow-none dark:border-slate-700 dark:bg-slate-900">
-                <CardBody className="space-y-2">
+                <CardBody className="space-y-3 p-5">
                   <div className="flex items-start justify-between gap-3">
                     <Typography variant="h6" className="text-blue-gray-900 dark:text-slate-100">
                       {item.title}

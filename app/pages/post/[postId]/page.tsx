@@ -318,7 +318,7 @@ export default function PostDetailPage() {
         <div className="mx-auto w-full max-w-4xl space-y-4 px-6 py-8 sm:px-10 lg:px-16">
 
           <Card className="border border-dashed border-slate-300 shadow-none dark:border-slate-700 dark:bg-slate-900">
-            <CardBody>
+            <CardBody className="p-5">
               <Typography className="text-slate-700 dark:text-slate-200">Post not found.</Typography>
             </CardBody>
           </Card>
@@ -346,7 +346,7 @@ export default function PostDetailPage() {
       <div className="mx-auto w-full max-w-4xl space-y-4 px-6 py-8 sm:px-10 lg:px-16">
 
         <Card className={`border shadow-none dark:bg-slate-900 ${accent.section}`}>
-          <CardBody className="space-y-4">
+          <CardBody className="space-y-4 p-5">
             <div className="flex items-start justify-between gap-3">
               <Typography variant="h4" className={accent.title}>
                 {post.title}
@@ -395,7 +395,7 @@ export default function PostDetailPage() {
         </Card>
 
         <Card className={`border shadow-none dark:bg-slate-900 ${accent.section}`}>
-          <CardBody className="space-y-4">
+          <CardBody className="space-y-4 p-5">
             <Typography variant="h5" className={`inline-flex items-center gap-2 ${accent.title}`}>
               <HiChatBubbleBottomCenterText aria-hidden="true" />
               Comments ({totalCommentCount})

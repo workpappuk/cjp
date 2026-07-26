@@ -330,15 +330,15 @@ export default function AdminAuditPage() {
           </div>
 
           <Card className="border border-slate-200 bg-white shadow-none dark:border-slate-700 dark:bg-slate-900">
-            <CardBody className="space-y-3">
+            <CardBody className="space-y-4 p-5">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <Typography variant="h5" className={accent.title}>Audit Explorer</Typography>
                 <Typography className="text-xs text-slate-700 dark:text-slate-300">Query model delta history</Typography>
               </div>
 
-              <div className="grid gap-2 md:grid-cols-4">
+              <div className="grid gap-2 md:grid-cols-4 md:items-end">
                 <select
-                  className="rounded border border-slate-300 bg-white px-2 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                  className="h-10 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                   value={auditModelName}
                   onChange={(event) => setAuditModelName(event.target.value as AuditModelName)}
                 >
@@ -348,14 +348,14 @@ export default function AdminAuditPage() {
                 </select>
 
                 <input
-                  className="rounded border border-slate-300 bg-white px-2 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-400"
+                  className="h-10 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-400"
                   placeholder="documentId (optional)"
                   value={auditDocumentId}
                   onChange={(event) => setAuditDocumentId(event.target.value)}
                 />
 
                 <select
-                  className="rounded border border-slate-300 bg-white px-2 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                  className="h-10 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                   value={auditOperation}
                   onChange={(event) => setAuditOperation(event.target.value as AuditOperation)}
                 >
@@ -366,6 +366,7 @@ export default function AdminAuditPage() {
 
                 <Button
                   color="blue"
+                  className="h-10 rounded-lg"
                   onClick={() => {
                     void runAuditSearch();
                   }}
@@ -402,7 +403,7 @@ export default function AdminAuditPage() {
                         </div>
                       </TimelineHeader>
 
-                      <TimelineBody className="mt-2 rounded-xl border border-slate-200 bg-slate-50/60 p-3 dark:border-slate-700 dark:bg-slate-800/70">
+                      <TimelineBody className="mt-2 rounded-xl border border-slate-200 bg-slate-50/60 p-4 dark:border-slate-700 dark:bg-slate-800/70">
                         <Typography className="text-xs text-slate-700 dark:text-slate-300">
                           doc: {buildAuditDocumentLabel(item)} • at: {item.changedAt ? formatDisplayDate(item.changedAt) : "-"}
                         </Typography>
@@ -449,6 +450,7 @@ export default function AdminAuditPage() {
                   size="sm"
                   variant="outlined"
                   color="blue-gray"
+                  className="rounded-lg"
                   onClick={() => {
                     void fetchAudit({
                       cursor: auditQueue.nextCursor,

@@ -436,7 +436,7 @@ export default function AdminModerationPage() {
           </div>
 
           <Card className="border border-slate-200 bg-white shadow-none dark:border-slate-700 dark:bg-slate-900">
-            <CardBody className="space-y-2">
+            <CardBody className="space-y-3 p-5">
               <Typography variant="h4" className={accent.title}>
                 Moderation Queue
               </Typography>
@@ -454,12 +454,12 @@ export default function AdminModerationPage() {
           </Card>
 
           <Card className="border border-slate-200 bg-white shadow-none dark:border-slate-700 dark:bg-slate-900">
-            <CardBody className="space-y-3">
+            <CardBody className="space-y-4 p-5">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <Typography variant="h5" className="text-blue-gray-900 dark:text-slate-100">Posts</Typography>
                 <div className="flex flex-wrap gap-2">
                   <select
-                    className="rounded border border-slate-300 bg-white px-2 py-1 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                    className="h-10 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                     value={postQueue.moderationFilter}
                     onChange={(event) =>
                       updateFilters("Post", setPostQueue, {
@@ -474,7 +474,7 @@ export default function AdminModerationPage() {
                     <option value="all">all</option>
                   </select>
                   <select
-                    className="rounded border border-slate-300 bg-white px-2 py-1 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                    className="h-10 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                     value={postQueue.recordFilter}
                     onChange={(event) =>
                       updateFilters("Post", setPostQueue, {
@@ -546,7 +546,8 @@ export default function AdminModerationPage() {
                     })
                   }
                   disabled={postQueue.loading}
-                  >
+                  className="rounded-lg"
+                >
                     {postQueue.loading ? (
                       <span className="inline-flex items-center gap-2">
                         <Spinner className="h-4 w-4" />
@@ -559,12 +560,12 @@ export default function AdminModerationPage() {
           </Card>
 
           <Card className="border border-slate-200 bg-white shadow-none dark:border-slate-700 dark:bg-slate-900">
-            <CardBody className="space-y-3">
+            <CardBody className="space-y-4 p-5">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <Typography variant="h5" className="text-blue-gray-900 dark:text-slate-100">Communities</Typography>
                 <div className="flex flex-wrap gap-2">
                   <select
-                    className="rounded border border-slate-300 bg-white px-2 py-1 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                    className="h-10 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                     value={communityQueue.moderationFilter}
                     onChange={(event) =>
                       updateFilters("Community", setCommunityQueue, {
@@ -579,7 +580,7 @@ export default function AdminModerationPage() {
                     <option value="all">all</option>
                   </select>
                   <select
-                    className="rounded border border-slate-300 bg-white px-2 py-1 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                    className="h-10 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                     value={communityQueue.recordFilter}
                     onChange={(event) =>
                       updateFilters("Community", setCommunityQueue, {
@@ -648,7 +649,8 @@ export default function AdminModerationPage() {
                     })
                   }
                   disabled={communityQueue.loading}
-                  >
+                  className="rounded-lg"
+                >
                     {communityQueue.loading ? (
                       <span className="inline-flex items-center gap-2">
                         <Spinner className="h-4 w-4" />
@@ -661,12 +663,12 @@ export default function AdminModerationPage() {
           </Card>
 
           <Card className="border border-slate-200 bg-white shadow-none dark:border-slate-700 dark:bg-slate-900">
-            <CardBody className="space-y-3">
+            <CardBody className="space-y-4 p-5">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <Typography variant="h5" className="text-blue-gray-900 dark:text-slate-100">Comments</Typography>
                 <div className="flex flex-wrap gap-2">
                   <select
-                    className="rounded border border-slate-300 bg-white px-2 py-1 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                    className="h-10 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                     value={commentQueue.moderationFilter}
                     onChange={(event) =>
                       updateFilters("Comment", setCommentQueue, {
@@ -681,7 +683,7 @@ export default function AdminModerationPage() {
                     <option value="all">all</option>
                   </select>
                   <select
-                    className="rounded border border-slate-300 bg-white px-2 py-1 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                    className="h-10 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                     value={commentQueue.recordFilter}
                     onChange={(event) =>
                       updateFilters("Comment", setCommentQueue, {
@@ -751,7 +753,8 @@ export default function AdminModerationPage() {
                     })
                   }
                   disabled={commentQueue.loading}
-                  >
+                  className="rounded-lg"
+                >
                     {commentQueue.loading ? (
                       <span className="inline-flex items-center gap-2">
                         <Spinner className="h-4 w-4" />
