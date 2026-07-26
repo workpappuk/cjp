@@ -1,11 +1,10 @@
 import mongoose from "mongoose";
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/_lib/auth";
 import { connectToDatabase } from "@/app/_lib/mongoose";
 import { CommentModel } from "@/app/_lib/models/Comment";
 import { PostModel } from "@/app/_lib/models/Post";
 import { UserProfileModel } from "@/app/_lib/models/UserProfile";
+import { getSessionActor } from "@/app/_lib/admin";
 import { checkRateLimit } from "@/app/_lib/rate-limit";
 import {
   getApiErrorMessage,
@@ -15,10 +14,6 @@ import {
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-function normalizeEmail(email: string) {
-  return email.trim().toLowerCase();
-}
 
 async function getCanonicalActorProfileId(email: string) {
   if (!email) {
@@ -55,6 +50,8 @@ export async function GET(_request: Request, { params }: ParamsContext) {
 
   try {
     await connectToDatabase();
+    const actor = await getSessionActor();
+    const canViewUnapproved = Boolean(actor?.isAdmin);
 
     ({ postId } = await params);
     if (!isValidObjectId(postId)) {
@@ -74,6 +71,7 @@ export async function GET(_request: Request, { params }: ParamsContext) {
         { targetType: "Post", targetId: postId },
         { postId },
       ],
+      ...(canViewUnapproved ? {} : { moderationStatus: "approved" }),
     })
       .sort({ createdAt: -1 })
       .limit(1000)
@@ -86,6 +84,7 @@ export async function GET(_request: Request, { params }: ParamsContext) {
         text: comment.text,
         createdBy: comment.createdBy ? String(comment.createdBy) : "",
         lastUpdatedBy: comment.lastUpdatedBy ? String(comment.lastUpdatedBy) : "",
+        moderationStatus: comment.moderationStatus ?? "approved",
         parentCommentId: comment.parentCommentId
           ? String(comment.parentCommentId)
           : null,
@@ -148,8 +147,8 @@ export async function POST(request: Request, { params }: ParamsContext) {
 
   try {
     await connectToDatabase();
-    const session = await getServerSession(authOptions);
-    const actorEmail = session?.user?.email ? normalizeEmail(session.user.email) : "";
+    const actor = await getSessionActor();
+    const actorEmail = actor?.email ?? "";
     const actorProfileId = await getCanonicalActorProfileId(actorEmail);
 
     ({ postId } = await params);
@@ -209,6 +208,9 @@ export async function POST(request: Request, { params }: ParamsContext) {
       );
     }
 
+    const moderationStatus = actor?.isAdmin ? "approved" : "pending";
+    const approvedAt = moderationStatus === "approved" ? new Date() : null;
+
     const created = await CommentModel.create({
       targetType: "Post",
       targetId: postId,
@@ -216,6 +218,9 @@ export async function POST(request: Request, { params }: ParamsContext) {
       parentCommentId,
       createdBy: actorProfileId,
       lastUpdatedBy: actorProfileId,
+      moderationStatus,
+      approvedAt,
+      approvedBy: moderationStatus === "approved" ? actorProfileId : null,
     });
 
     return NextResponse.json(
@@ -226,6 +231,8 @@ export async function POST(request: Request, { params }: ParamsContext) {
         text: created.text,
         createdBy: created.createdBy ? String(created.createdBy) : "",
         lastUpdatedBy: created.lastUpdatedBy ? String(created.lastUpdatedBy) : "",
+        moderationStatus: created.moderationStatus ?? moderationStatus,
+        approvedAt: created.approvedAt ?? approvedAt,
         parentCommentId: created.parentCommentId
           ? String(created.parentCommentId)
           : null,

@@ -26,6 +26,27 @@ const communitySchema = new Schema(
       type: [{ type: Schema.Types.ObjectId, ref: "Tag" }],
       default: [],
     },
+    moderationStatus: {
+      type: String,
+      enum: ["pending", "approved", "rejected"],
+      default: "approved",
+      index: true,
+    },
+    approvedAt: {
+      type: Date,
+      default: null,
+    },
+    approvedBy: {
+      type: Schema.Types.ObjectId,
+      ref: "UserProfile",
+      default: null,
+    },
+    recordStatus: {
+      type: String,
+      enum: ["active", "deleted", "archived", "flagged"],
+      default: "active",
+      index: true,
+    },
   },
   {
     timestamps: true,
@@ -34,11 +55,18 @@ const communitySchema = new Schema(
 );
 
 communitySchema.index({ tags: 1 });
+communitySchema.index({ moderationStatus: 1, createdAt: -1 });
+communitySchema.index({ recordStatus: 1, createdAt: -1 });
 
 export type CommunityDocument = InferSchemaType<typeof communitySchema>;
 
 // Hot-reload safety: if an older cached model lacks `tags`, rebuild it.
-if (models.Community && !models.Community.schema.path("tags")) {
+if (
+  models.Community &&
+  (!models.Community.schema.path("tags") ||
+    !models.Community.schema.path("moderationStatus") ||
+    !models.Community.schema.path("recordStatus"))
+) {
   delete models.Community;
 }
 

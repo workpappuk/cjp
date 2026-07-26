@@ -84,6 +84,7 @@ export default function PostDetailPage() {
   const [comments, setComments] = useState<CommentItem[]>([]);
   const [joinedCommunities, setJoinedCommunities] = useState<string[]>([]);
   const [commentText, setCommentText] = useState("");
+  const [submissionNotice, setSubmissionNotice] = useState("");
 
   const persistJoinedCommunities = async (nextJoined: string[]) => {
     await fetch("/api/user-profile", {
@@ -218,6 +219,7 @@ export default function PostDetailPage() {
   const handleAddComment = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!canComment) return;
+    setSubmissionNotice("");
 
     const text = commentText.trim();
     if (!text) return;
@@ -237,8 +239,15 @@ export default function PostDetailPage() {
     const created = (await response.json()) as {
       id: string;
       text: string;
+      moderationStatus?: string;
       createdAt: string;
     };
+
+    if (created.moderationStatus === "pending") {
+      setCommentText("");
+      setSubmissionNotice("Comment submitted for admin approval.");
+      return;
+    }
 
     const nextComment = {
       id: created.id,
@@ -378,6 +387,12 @@ export default function PostDetailPage() {
               onJoin={communityToJoinForComments ? handleJoinForComments : undefined}
               color="blue"
             />
+
+            {submissionNotice ? (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                {submissionNotice}
+              </div>
+            ) : null}
 
             {comments.length === 0 ? (
               <Typography className="text-slate-600">No comments yet.</Typography>

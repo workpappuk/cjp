@@ -21,6 +21,7 @@ type PersistedProfile = {
   name?: string;
   image?: string;
   provider?: string;
+  isAdmin?: boolean;
   bio?: string;
   createdBy?: Types.ObjectId | string | null;
   lastUpdatedBy?: Types.ObjectId | string | null;
@@ -198,6 +199,7 @@ function toProfileResponse(profile: PersistedProfile | null | undefined, fallbac
     name: profile?.name ?? "",
     image: profile?.image ?? "",
     provider: profile?.provider ?? "google",
+    isAdmin: Boolean(profile?.isAdmin),
     bio: profile?.bio ?? "",
     createdBy: profile?.createdBy ? String(profile.createdBy) : "",
     lastUpdatedBy: profile?.lastUpdatedBy ? String(profile.lastUpdatedBy) : "",

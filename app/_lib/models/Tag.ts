@@ -35,6 +35,12 @@ const tagSchema = new Schema(
       default: true,
       index: true,
     },
+    recordStatus: {
+      type: String,
+      enum: ["active", "deleted", "archived", "flagged"],
+      default: "active",
+      index: true,
+    },
   },
   {
     timestamps: true,
@@ -43,6 +49,7 @@ const tagSchema = new Schema(
 );
 
 tagSchema.index({ normalizedName: 1 }, { unique: true });
+tagSchema.index({ recordStatus: 1, createdAt: -1 });
 
 // Keep normalizedName in sync for uniqueness/filtering.
 tagSchema.pre("validate", function syncNormalizedName() {
@@ -52,6 +59,10 @@ tagSchema.pre("validate", function syncNormalizedName() {
 });
 
 export type TagDocument = InferSchemaType<typeof tagSchema>;
+
+if (models.Tag && !models.Tag.schema.path("recordStatus")) {
+  delete models.Tag;
+}
 
 export const TagModel =
   models.Tag || model("Tag", tagSchema);

@@ -5,6 +5,7 @@ import { connectToDatabase } from "@/app/_lib/mongoose";
 import { PostModel } from "@/app/_lib/models/Post";
 import { CommunityModel } from "@/app/_lib/models/Community";
 import { TagModel } from "@/app/_lib/models/Tag";
+import { getSessionActor } from "@/app/_lib/admin";
 import {
   getApiErrorMessage,
   getOrCreateRequestId,
@@ -82,6 +83,8 @@ export async function GET(_request: Request, { params }: ParamsContext) {
 
   try {
     await connectToDatabase();
+    const actor = await getSessionActor();
+    const canViewUnapproved = Boolean(actor?.isAdmin);
     ({ postId } = await params);
 
     if (!mongoose.Types.ObjectId.isValid(postId)) {
@@ -96,7 +99,10 @@ export async function GET(_request: Request, { params }: ParamsContext) {
       );
     }
 
-    const post = await PostModel.findById(postId).lean();
+    const post = await PostModel.findOne({
+      _id: postId,
+      ...(canViewUnapproved ? {} : { moderationStatus: "approved" }),
+    }).lean();
     if (!post) {
       return NextResponse.json(
         { error: "Post not found.", requestId },
@@ -143,6 +149,7 @@ export async function GET(_request: Request, { params }: ParamsContext) {
       tags: resolveRefNames(post.tags as JoinedTagValue[] | undefined, tagNameById),
       createdBy: post.createdBy ? String(post.createdBy) : "",
       lastUpdatedBy: post.lastUpdatedBy ? String(post.lastUpdatedBy) : "",
+      moderationStatus: post.moderationStatus ?? "approved",
       createdAt: post.createdAt,
       updatedAt: post.updatedAt,
     }, {

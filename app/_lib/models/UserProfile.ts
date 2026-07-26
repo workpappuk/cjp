@@ -33,6 +33,12 @@ const userProfileSchema = new Schema(
       type: Boolean,
       default: false,
     },
+    recordStatus: {
+      type: String,
+      enum: ["active", "deleted", "archived", "flagged"],
+      default: "active",
+      index: true,
+    },
     bio: {
       type: String,
       trim: true,
@@ -65,6 +71,14 @@ const userProfileSchema = new Schema(
 );
 
 export type UserProfileDocument = InferSchemaType<typeof userProfileSchema>;
+
+if (
+  models.UserProfile &&
+  (!models.UserProfile.schema.path("isAdmin") ||
+    !models.UserProfile.schema.path("recordStatus"))
+) {
+  delete models.UserProfile;
+}
 
 export const UserProfileModel =
   models.UserProfile || model("UserProfile", userProfileSchema);

@@ -29,6 +29,12 @@ const rateLimitCounterSchema = new Schema(
       type: Date,
       required: true,
     },
+    recordStatus: {
+      type: String,
+      enum: ["active", "deleted", "archived", "flagged"],
+      default: "active",
+      index: true,
+    },
   },
   {
     versionKey: false,
@@ -47,9 +53,17 @@ rateLimitCounterSchema.index(
   { expireAfterSeconds: 0 },
 );
 
+rateLimitCounterSchema.index(
+  { recordStatus: 1, bucket: 1 },
+);
+
 export type RateLimitCounterDocument = InferSchemaType<
   typeof rateLimitCounterSchema
 >;
+
+if (models.RateLimitCounter && !models.RateLimitCounter.schema.path("recordStatus")) {
+  delete models.RateLimitCounter;
+}
 
 export const RateLimitCounterModel =
   models.RateLimitCounter || model("RateLimitCounter", rateLimitCounterSchema);

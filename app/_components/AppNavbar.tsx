@@ -32,6 +32,7 @@ export default function AppNavbar({
     name?: string | null;
     email?: string | null;
     image?: string | null;
+    isAdmin?: boolean;
   } | null>(null);
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
 
@@ -51,6 +52,7 @@ export default function AppNavbar({
         name?: string | null;
         email?: string | null;
         image?: string | null;
+        isAdmin?: boolean;
       };
       setLocalUser(parsed);
     } catch {
@@ -80,6 +82,7 @@ export default function AppNavbar({
           name?: string;
           email?: string;
           image?: string;
+          isAdmin?: boolean;
         };
 
         if (!isMounted) {
@@ -90,6 +93,7 @@ export default function AppNavbar({
           name: payload.name ?? "",
           email: payload.email ?? "",
           image: payload.image ?? "",
+          isAdmin: Boolean(payload.isAdmin),
         };
 
         setLocalUser(nextProfile);
@@ -143,6 +147,7 @@ export default function AppNavbar({
   const profileName = session?.user?.name ?? localUser?.name ?? "Profile";
   const profileEmail = session?.user?.email ?? localUser?.email ?? "";
   const profileImage = session?.user?.image ?? localUser?.image ?? "";
+  const isAdmin = Boolean(localUser?.isAdmin);
 
   return (
     <nav className="sticky top-0 z-20 border-b border-slate-200/70 bg-white/85 backdrop-blur">
@@ -255,6 +260,16 @@ export default function AppNavbar({
                     {profileMenuContent}
                     <div className="my-2 border-t border-slate-200" />
                   </div>
+                ) : null}
+
+                {isAdmin ? (
+                  <Link
+                    href="/pages/admin"
+                    role="menuitem"
+                    className="mb-2 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-blue-700 hover:bg-blue-50"
+                  >
+                    Admin Moderation
+                  </Link>
                 ) : null}
 
                 <button

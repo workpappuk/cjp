@@ -62,6 +62,7 @@ export default function HomePage() {
   const [isMobileLeftModalOpen, setIsMobileLeftModalOpen] = useState(false);
   const [isMobileRightModalOpen, setIsMobileRightModalOpen] = useState(false);
   const [activeComposer, setActiveComposer] = useState<"post" | "community">("post");
+  const [submissionNotice, setSubmissionNotice] = useState("");
   const discoverListRef = useRef<HTMLDivElement | null>(null);
   const feedListRef = useRef<HTMLDivElement | null>(null);
 
@@ -335,6 +336,7 @@ export default function HomePage() {
   const handleCreateCommunity = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (communityDisabled) return;
+    setSubmissionNotice("");
 
     const nextName = normalizedCommunityName;
     const exists = communities.some(
@@ -361,6 +363,7 @@ export default function HomePage() {
     const created = (await response.json()) as {
       id: string;
       name: string;
+      moderationStatus?: string;
       createdAt: string;
       updatedAt: string;
       createdBy?: string;
@@ -372,6 +375,13 @@ export default function HomePage() {
       targetId: created.id,
       tags: communityTags,
     });
+
+    if (created.moderationStatus === "pending") {
+      setCommunityName("");
+      setCommunityTags([]);
+      setSubmissionNotice("Community submitted for admin approval.");
+      return;
+    }
 
     const nextCommunities = [...communities, nextName.toLowerCase()];
     setCommunities(nextCommunities);
@@ -410,6 +420,7 @@ export default function HomePage() {
   const handleCreatePost = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (disabled) return;
+    setSubmissionNotice("");
 
     const response = await fetch("/api/posts", {
       method: "POST",
@@ -433,6 +444,7 @@ export default function HomePage() {
       content: string;
       communities?: string[];
       tags?: string[];
+      moderationStatus?: string;
       createdAt: string;
     };
 
@@ -441,6 +453,14 @@ export default function HomePage() {
       targetId: created.id,
       tags: postTags,
     });
+
+    if (created.moderationStatus === "pending") {
+      setTitle("");
+      setContent("");
+      setPostTags([]);
+      setSubmissionNotice("Post submitted for admin approval.");
+      return;
+    }
 
     const newPost = {
       id: created.id,
@@ -660,7 +680,7 @@ export default function HomePage() {
               onSubmit={handleCreatePost}
               disabled={disabled}
               buttonLabel="Publish Post"
-              helperText="New posts are published to your first joined community."
+              helperText="New posts are submitted for admin approval before they appear publicly."
               color={buttonColor}
               extraSection={(
                 <TagsPicker
@@ -747,6 +767,14 @@ export default function HomePage() {
           </div>
         )}
       />
+
+      {submissionNotice ? (
+        <div className="mx-auto w-full max-w-7xl px-6 pt-4 sm:px-10 lg:px-16">
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            {submissionNotice}
+          </div>
+        </div>
+      ) : null}
 
       <div className="mx-auto w-full max-w-7xl px-6 py-8 sm:px-10 lg:px-16">
         <div className="mb-4 flex gap-2 lg:hidden">

@@ -1,12 +1,11 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
 import { Types } from "mongoose";
-import { authOptions } from "@/app/_lib/auth";
 import { connectToDatabase } from "@/app/_lib/mongoose";
 import { PostModel } from "@/app/_lib/models/Post";
 import { UserProfileModel } from "@/app/_lib/models/UserProfile";
 import { CommunityModel } from "@/app/_lib/models/Community";
 import { TagModel } from "@/app/_lib/models/Tag";
+import { getSessionActor } from "@/app/_lib/admin";
 import { checkRateLimit } from "@/app/_lib/rate-limit";
 import {
   getApiErrorMessage,
@@ -16,10 +15,6 @@ import {
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-function normalizeEmail(email: string) {
-  return email.trim().toLowerCase();
-}
 
 async function getCanonicalActorProfileId(email: string) {
   if (!email) {
@@ -129,6 +124,8 @@ export async function GET(request: Request) {
 
   try {
     await connectToDatabase();
+    const actor = await getSessionActor();
+    const canViewUnapproved = Boolean(actor?.isAdmin);
 
     const { searchParams } = new URL(request.url);
     const communityFilters = searchParams
@@ -141,9 +138,14 @@ export async function GET(request: Request) {
     const query =
       communityFilters.length > 0
         ? communityIds.length > 0
-          ? { communities: { $in: communityIds } }
+          ? {
+              communities: { $in: communityIds },
+              ...(canViewUnapproved ? {} : { moderationStatus: "approved" }),
+            }
           : { _id: { $in: [] } }
-        : {};
+        : canViewUnapproved
+          ? {}
+          : { moderationStatus: "approved" };
 
     const posts = await PostModel.find(query)
       .sort({ createdAt: -1 })
@@ -192,6 +194,7 @@ export async function GET(request: Request) {
         tags: resolveRefNames(post.tags as JoinedTagValue[] | undefined, tagNameById),
         createdBy: post.createdBy ? String(post.createdBy) : "",
         lastUpdatedBy: post.lastUpdatedBy ? String(post.lastUpdatedBy) : "",
+        moderationStatus: post.moderationStatus ?? "approved",
         createdAt: post.createdAt,
         updatedAt: post.updatedAt,
       })),
@@ -249,8 +252,8 @@ export async function POST(request: Request) {
 
   try {
     await connectToDatabase();
-    const session = await getServerSession(authOptions);
-    const actorEmail = session?.user?.email ? normalizeEmail(session.user.email) : "";
+    const actor = await getSessionActor();
+    const actorEmail = actor?.email ?? "";
     const actorProfileId = await getCanonicalActorProfileId(actorEmail);
 
     const payload = (await request.json()) as {
@@ -280,12 +283,18 @@ export async function POST(request: Request) {
       );
     }
 
+    const moderationStatus = actor?.isAdmin ? "approved" : "pending";
+    const approvedAt = moderationStatus === "approved" ? new Date() : null;
+
     const created = await PostModel.create({
       title,
       content,
       communities: communityIds,
       createdBy: actorProfileId,
       lastUpdatedBy: actorProfileId,
+      moderationStatus,
+      approvedAt,
+      approvedBy: moderationStatus === "approved" ? actorProfileId : null,
     });
 
     const createdDoc = await PostModel.findById(created._id).lean();
@@ -331,6 +340,8 @@ export async function POST(request: Request) {
         ),
         createdBy: createdDoc?.createdBy ? String(createdDoc.createdBy) : "",
         lastUpdatedBy: createdDoc?.lastUpdatedBy ? String(createdDoc.lastUpdatedBy) : "",
+        moderationStatus: createdDoc?.moderationStatus ?? moderationStatus,
+        approvedAt: createdDoc?.approvedAt ?? approvedAt,
         createdAt: createdDoc?.createdAt ?? created.createdAt,
         updatedAt: createdDoc?.updatedAt ?? created.updatedAt,
       },

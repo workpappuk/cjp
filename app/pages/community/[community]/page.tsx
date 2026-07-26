@@ -48,6 +48,7 @@ export default function CommunityPage() {
   const [joinedCommunities, setJoinedCommunities] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [visibleCount, setVisibleCount] = useState(INITIAL_FEED_RENDER_COUNT);
+  const [submissionNotice, setSubmissionNotice] = useState("");
 
   const persistJoinedCommunities = async (nextJoined: string[]) => {
     await fetch("/api/user-profile", {
@@ -227,6 +228,7 @@ export default function CommunityPage() {
   const handleCreatePost = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!isJoined || postComposerDisabled) return;
+    setSubmissionNotice("");
 
     const response = await fetch("/api/posts", {
       method: "POST",
@@ -250,6 +252,7 @@ export default function CommunityPage() {
       content: string;
       communities?: string[];
       tags?: string[];
+      moderationStatus?: string;
       createdAt: string;
     };
 
@@ -258,6 +261,14 @@ export default function CommunityPage() {
       targetId: created.id,
       tags: postTags,
     });
+
+    if (created.moderationStatus === "pending") {
+      setPostTitle("");
+      setPostContent("");
+      setPostTags([]);
+      setSubmissionNotice("Post submitted for admin approval.");
+      return;
+    }
 
     const newPost = {
       id: created.id,
@@ -324,6 +335,12 @@ export default function CommunityPage() {
       />
 
       <div className="mx-auto w-full max-w-5xl space-y-4 px-6 py-8 sm:px-10 lg:px-16">
+
+        {submissionNotice ? (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            {submissionNotice}
+          </div>
+        ) : null}
 
         <Card className="rounded-2xl border border-slate-200 bg-white shadow-none">
           <CardBody className="space-y-2">
