@@ -18,8 +18,22 @@ const postSchema = new Schema(
       maxlength: 10000,
     },
     communities: {
-      type: [String],
+      type: [{ type: Schema.Types.ObjectId, ref: "Community" }],
       default: [],
+    },
+    tags: {
+      type: [{ type: Schema.Types.ObjectId, ref: "Tag" }],
+      default: [],
+    },
+    createdBy: {
+      type: Schema.Types.ObjectId,
+      ref: "UserProfile",
+      default: null,
+    },
+    lastUpdatedBy: {
+      type: Schema.Types.ObjectId,
+      ref: "UserProfile",
+      default: null,
     },
   },
   {
@@ -30,6 +44,7 @@ const postSchema = new Schema(
 
 postSchema.index({ createdAt: -1 });
 postSchema.index({ communities: 1 });
+postSchema.index({ tags: 1 });
 
 export type PostDocument = InferSchemaType<typeof postSchema>;
 

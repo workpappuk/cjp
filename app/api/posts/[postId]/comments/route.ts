@@ -1,13 +1,43 @@
 import mongoose from "mongoose";
 import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/_lib/auth";
 import { connectToDatabase } from "@/app/_lib/mongoose";
 import { CommentModel } from "@/app/_lib/models/Comment";
 import { PostModel } from "@/app/_lib/models/Post";
+import { UserProfileModel } from "@/app/_lib/models/UserProfile";
 import { checkRateLimit } from "@/app/_lib/rate-limit";
-import { getApiErrorMessage, logApiError } from "@/app/_lib/api-error";
+import {
+  getApiErrorMessage,
+  getOrCreateRequestId,
+  logApiError,
+} from "@/app/_lib/api-error";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+function normalizeEmail(email: string) {
+  return email.trim().toLowerCase();
+}
+
+async function getCanonicalActorProfileId(email: string) {
+  if (!email) {
+    return null;
+  }
+
+  const profiles = await UserProfileModel.find({ email }, { _id: 1 })
+    .sort({ updatedAt: -1, createdAt: -1, _id: -1 })
+    .lean();
+
+  const keeper = profiles[0]?._id ?? null;
+
+  if (profiles.length > 1) {
+    const staleIds = profiles.slice(1).map((profile) => profile._id);
+    await UserProfileModel.deleteMany({ _id: { $in: staleIds } });
+  }
+
+  return keeper;
+}
 
 type ParamsContext = {
   params: {
@@ -20,15 +50,30 @@ function isValidObjectId(value: string) {
 }
 
 export async function GET(_request: Request, { params }: ParamsContext) {
+  const requestId = getOrCreateRequestId(_request);
+
   try {
     await connectToDatabase();
 
     const postId = params.postId;
     if (!isValidObjectId(postId)) {
-      return NextResponse.json({ error: "Invalid post id." }, { status: 400 });
+      return NextResponse.json(
+        { error: "Invalid post id.", requestId },
+        {
+          status: 400,
+          headers: {
+            "x-request-id": requestId,
+          },
+        },
+      );
     }
 
-    const comments = await CommentModel.find({ postId })
+    const comments = await CommentModel.find({
+      $or: [
+        { targetType: "Post", targetId: postId },
+        { postId },
+      ],
+    })
       .sort({ createdAt: -1 })
       .limit(1000)
       .lean();
@@ -36,28 +81,46 @@ export async function GET(_request: Request, { params }: ParamsContext) {
     return NextResponse.json(
       comments.map((comment) => ({
         id: String(comment._id),
-        postId: String(comment.postId),
+        postId: String(comment.targetId),
         text: comment.text,
+        createdBy: comment.createdBy ? String(comment.createdBy) : "",
+        lastUpdatedBy: comment.lastUpdatedBy ? String(comment.lastUpdatedBy) : "",
         parentCommentId: comment.parentCommentId
           ? String(comment.parentCommentId)
           : null,
         createdAt: comment.createdAt,
         updatedAt: comment.updatedAt,
       })),
+      {
+        headers: {
+          "x-request-id": requestId,
+        },
+      },
     );
   } catch (error) {
     logApiError({
       route: "/api/posts/[postId]/comments",
       method: "GET",
       error,
+      requestId,
       context: { postId: params.postId },
     });
     const message = getApiErrorMessage(error, "Failed to fetch comments");
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json(
+      { error: message, requestId },
+      {
+        status: 500,
+        headers: {
+          "x-request-id": requestId,
+        },
+      },
+    );
   }
 }
 
 export async function POST(request: Request, { params }: ParamsContext) {
+  const requestId = getOrCreateRequestId(request);
+
   const rateLimit = await checkRateLimit({
     scope: "comments:create",
     request,
@@ -69,11 +132,13 @@ export async function POST(request: Request, { params }: ParamsContext) {
     return NextResponse.json(
       {
         error: "Too many requests. Please try again later.",
+        requestId,
       },
       {
         status: 429,
         headers: {
           "Retry-After": String(rateLimit.retryAfterSeconds),
+          "x-request-id": requestId,
         },
       },
     );
@@ -81,15 +146,34 @@ export async function POST(request: Request, { params }: ParamsContext) {
 
   try {
     await connectToDatabase();
+    const session = await getServerSession(authOptions);
+    const actorEmail = session?.user?.email ? normalizeEmail(session.user.email) : "";
+    const actorProfileId = await getCanonicalActorProfileId(actorEmail);
 
     const postId = params.postId;
     if (!isValidObjectId(postId)) {
-      return NextResponse.json({ error: "Invalid post id." }, { status: 400 });
+      return NextResponse.json(
+        { error: "Invalid post id.", requestId },
+        {
+          status: 400,
+          headers: {
+            "x-request-id": requestId,
+          },
+        },
+      );
     }
 
     const postExists = await PostModel.exists({ _id: postId });
     if (!postExists) {
-      return NextResponse.json({ error: "Post not found." }, { status: 404 });
+      return NextResponse.json(
+        { error: "Post not found.", requestId },
+        {
+          status: 404,
+          headers: {
+            "x-request-id": requestId,
+          },
+        },
+      );
     }
 
     const payload = (await request.json()) as {
@@ -100,46 +184,76 @@ export async function POST(request: Request, { params }: ParamsContext) {
     const text = payload?.text?.trim() ?? "";
     if (!text) {
       return NextResponse.json(
-        { error: "Comment text is required." },
-        { status: 400 },
+        { error: "Comment text is required.", requestId },
+        {
+          status: 400,
+          headers: {
+            "x-request-id": requestId,
+          },
+        },
       );
     }
 
     const parentCommentId = payload?.parentCommentId ?? null;
     if (parentCommentId && !isValidObjectId(parentCommentId)) {
       return NextResponse.json(
-        { error: "Invalid parent comment id." },
-        { status: 400 },
+        { error: "Invalid parent comment id.", requestId },
+        {
+          status: 400,
+          headers: {
+            "x-request-id": requestId,
+          },
+        },
       );
     }
 
     const created = await CommentModel.create({
-      postId,
+      targetType: "Post",
+      targetId: postId,
       text,
       parentCommentId,
+      createdBy: actorProfileId,
+      lastUpdatedBy: actorProfileId,
     });
 
     return NextResponse.json(
       {
+        requestId,
         id: String(created._id),
-        postId: String(created.postId),
+        postId: String(created.targetId),
         text: created.text,
+        createdBy: created.createdBy ? String(created.createdBy) : "",
+        lastUpdatedBy: created.lastUpdatedBy ? String(created.lastUpdatedBy) : "",
         parentCommentId: created.parentCommentId
           ? String(created.parentCommentId)
           : null,
         createdAt: created.createdAt,
         updatedAt: created.updatedAt,
       },
-      { status: 201 },
+      {
+        status: 201,
+        headers: {
+          "x-request-id": requestId,
+        },
+      },
     );
   } catch (error) {
     logApiError({
       route: "/api/posts/[postId]/comments",
       method: "POST",
       error,
+      requestId,
       context: { postId: params.postId },
     });
     const message = getApiErrorMessage(error, "Failed to create comment");
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json(
+      { error: message, requestId },
+      {
+        status: 500,
+        headers: {
+          "x-request-id": requestId,
+        },
+      },
+    );
   }
 }

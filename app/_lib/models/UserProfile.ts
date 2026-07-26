@@ -35,8 +35,18 @@ const userProfileSchema = new Schema(
       default: "",
       maxlength: 500,
     },
+    createdBy: {
+      type: Schema.Types.ObjectId,
+      ref: "UserProfile",
+      default: null,
+    },
+    lastUpdatedBy: {
+      type: Schema.Types.ObjectId,
+      ref: "UserProfile",
+      default: null,
+    },
     joinedCommunities: {
-      type: [String],
+      type: [{ type: Schema.Types.ObjectId, ref: "Community" }],
       default: [],
     },
     lastLoginAt: {
@@ -49,6 +59,8 @@ const userProfileSchema = new Schema(
     versionKey: false,
   },
 );
+
+userProfileSchema.index({ email: 1 }, { unique: true });
 
 export type UserProfileDocument = InferSchemaType<typeof userProfileSchema>;
 
