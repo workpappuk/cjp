@@ -37,5 +37,10 @@ communitySchema.index({ tags: 1 });
 
 export type CommunityDocument = InferSchemaType<typeof communitySchema>;
 
+// Hot-reload safety: if an older cached model lacks `tags`, rebuild it.
+if (models.Community && !models.Community.schema.path("tags")) {
+  delete models.Community;
+}
+
 export const CommunityModel =
   models.Community || model("Community", communitySchema);

@@ -48,4 +48,9 @@ postSchema.index({ tags: 1 });
 
 export type PostDocument = InferSchemaType<typeof postSchema>;
 
+// Hot-reload safety: if an older cached model lacks `tags`, rebuild it.
+if (models.Post && !models.Post.schema.path("tags")) {
+  delete models.Post;
+}
+
 export const PostModel = models.Post || model("Post", postSchema);

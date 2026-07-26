@@ -28,6 +28,7 @@ type PostItem = {
   title: string;
   content: string;
   communities?: string[];
+  tags?: string[];
   createdAt: string;
 };
 
@@ -52,6 +53,7 @@ export default function HomePage() {
   const [communityName, setCommunityName] = useState("");
   const [communityTags, setCommunityTags] = useState<string[]>([]);
   const [communities, setCommunities] = useState<string[]>([]);
+  const [communityTagsByName, setCommunityTagsByName] = useState<Record<string, string[]>>({});
   const [availableTags, setAvailableTags] = useState<string[]>([]);
   const [joinedCommunities, setJoinedCommunities] = useState<string[]>([]);
   const [communitySearch, setCommunitySearch] = useState("");
@@ -208,6 +210,7 @@ export default function HomePage() {
             title: string;
             content: string;
             communities?: string[];
+            tags?: string[];
             createdAt: string;
           }>;
 
@@ -218,6 +221,7 @@ export default function HomePage() {
                   title: post.title,
                   content: post.content,
                   communities: post.communities,
+                  tags: post.tags,
                   createdAt: formatDisplayDate(post.createdAt),
                 }))
               : [],
@@ -227,7 +231,21 @@ export default function HomePage() {
         if (communitiesRes.ok) {
           const parsedCommunities = (await communitiesRes.json()) as Array<{
             name: string;
+            tags?: string[];
           }>;
+
+          const nextTagsByName: Record<string, string[]> = {};
+          if (Array.isArray(parsedCommunities)) {
+            for (const community of parsedCommunities) {
+              const normalizedName = community.name.trim().toLowerCase();
+              nextTagsByName[normalizedName] = dedupeTagNames(
+                Array.isArray(community.tags) ? community.tags : [],
+              );
+            }
+          }
+
+          setCommunityTagsByName(nextTagsByName);
+
           setCommunities(
             Array.isArray(parsedCommunities)
               ? parsedCommunities.map((item) => item.name)
@@ -263,6 +281,7 @@ export default function HomePage() {
 
         setPosts([]);
         setCommunities([]);
+        setCommunityTagsByName({});
         setAvailableTags([]);
         setJoinedCommunities([]);
       }
@@ -356,6 +375,10 @@ export default function HomePage() {
 
     const nextCommunities = [...communities, nextName.toLowerCase()];
     setCommunities(nextCommunities);
+    setCommunityTagsByName((prev) => ({
+      ...prev,
+      [nextName.toLowerCase()]: dedupeTagNames(communityTags),
+    }));
     setAvailableTags((prev) => dedupeTagNames([...prev, ...communityTags]));
 
     const alreadyJoined = joinedCommunities.some(
@@ -409,6 +432,7 @@ export default function HomePage() {
       title: string;
       content: string;
       communities?: string[];
+      tags?: string[];
       createdAt: string;
     };
 
@@ -423,6 +447,7 @@ export default function HomePage() {
       title: created.title,
       content: created.content,
       communities: created.communities,
+      tags: dedupeTagNames(postTags.length > 0 ? postTags : created.tags ?? []),
       createdAt: formatDisplayDate(created.createdAt),
     };
 
@@ -485,6 +510,7 @@ export default function HomePage() {
                   const item = filteredAvailableCommunities[virtualItem.index];
                   if (!item) return null;
                   const isJoined = joinedCommunitiesSet.has(item);
+                  const itemTags = communityTagsByName[item] ?? [];
 
                   return (
                     <div
@@ -495,7 +521,21 @@ export default function HomePage() {
                       style={{ transform: `translateY(${virtualItem.start}px)` }}
                     >
                       <div className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2">
-                        <span className="text-sm text-slate-700">{item}</span>
+                        <div className="min-w-0">
+                          <span className="text-sm text-slate-700">{item}</span>
+                          {itemTags.length > 0 ? (
+                            <div className="mt-1 flex flex-wrap gap-1">
+                              {itemTags.slice(0, 3).map((tag) => (
+                                <span
+                                  key={`${item}-tag-${tag}`}
+                                  className="rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-blue-700"
+                                >
+                                  #{tag}
+                                </span>
+                              ))}
+                            </div>
+                          ) : null}
+                        </div>
                         <div className="flex items-center gap-2">
                           <Link
                             href={`/pages/community/${encodeURIComponent(item)}`}
@@ -828,6 +868,21 @@ export default function HomePage() {
                                             className="rounded-full"
                                           />
                                         </Link>
+                                      ))}
+                                    </div>
+                                  ) : null}
+
+                                  {Array.isArray(post.tags) && post.tags.length > 0 ? (
+                                    <div className="flex flex-wrap gap-2">
+                                      {post.tags.map((tag) => (
+                                        <Chip
+                                          key={`${post.id}-tag-${tag}`}
+                                          value={`#${tag}`}
+                                          size="sm"
+                                          variant="ghost"
+                                          color="blue"
+                                          className="rounded-full"
+                                        />
                                       ))}
                                     </div>
                                   ) : null}

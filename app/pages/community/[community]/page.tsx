@@ -21,6 +21,7 @@ type PostItem = {
   title: string;
   content: string;
   communities?: string[];
+  tags?: string[];
   createdAt: string;
 };
 
@@ -43,6 +44,7 @@ export default function CommunityPage() {
   const [postContent, setPostContent] = useState("");
   const [postTags, setPostTags] = useState<string[]>([]);
   const [availableTags, setAvailableTags] = useState<string[]>([]);
+  const [communityTags, setCommunityTags] = useState<string[]>([]);
   const [joinedCommunities, setJoinedCommunities] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [visibleCount, setVisibleCount] = useState(INITIAL_FEED_RENDER_COUNT);
@@ -83,12 +85,13 @@ export default function CommunityPage() {
 
     const hydrateFromApi = async () => {
       try {
-        const [postsRes, tagsRes, profileRes] = await Promise.all([
+        const [postsRes, tagsRes, profileRes, communitiesRes] = await Promise.all([
           fetch(`/api/posts?community=${encodeURIComponent(communityName.toLowerCase())}`, {
             cache: "no-store",
           }),
           fetch("/api/tags", { cache: "no-store" }),
           fetch("/api/user-profile", { cache: "no-store" }),
+          fetch("/api/communities", { cache: "no-store" }),
         ]);
 
         if (!isMounted) {
@@ -101,6 +104,7 @@ export default function CommunityPage() {
             title: string;
             content: string;
             communities?: string[];
+            tags?: string[];
             createdAt: string;
           }>;
 
@@ -111,8 +115,28 @@ export default function CommunityPage() {
                   title: post.title,
                   content: post.content,
                   communities: post.communities,
+                  tags: post.tags,
                   createdAt: formatDisplayDate(post.createdAt),
                 }))
+              : [],
+          );
+        }
+
+        if (communitiesRes.ok) {
+          const parsedCommunities = (await communitiesRes.json()) as Array<{
+            name: string;
+            tags?: string[];
+          }>;
+
+          const matchedCommunity = Array.isArray(parsedCommunities)
+            ? parsedCommunities.find(
+                (item) => item.name.trim().toLowerCase() === communityName.trim().toLowerCase(),
+              )
+            : undefined;
+
+          setCommunityTags(
+            matchedCommunity?.tags && Array.isArray(matchedCommunity.tags)
+              ? dedupeTagNames(matchedCommunity.tags)
               : [],
           );
         }
@@ -145,6 +169,7 @@ export default function CommunityPage() {
 
         setPosts([]);
         setAvailableTags([]);
+        setCommunityTags([]);
         setJoinedCommunities([]);
       }
     };
@@ -174,6 +199,7 @@ export default function CommunityPage() {
       id: post.id,
       title: post.title,
       content: post.content,
+      tags: post.tags,
       createdAt: post.createdAt,
     }));
   }, [authoredPosts]);
@@ -223,6 +249,7 @@ export default function CommunityPage() {
       title: string;
       content: string;
       communities?: string[];
+      tags?: string[];
       createdAt: string;
     };
 
@@ -237,6 +264,7 @@ export default function CommunityPage() {
       title: created.title,
       content: created.content,
       communities: created.communities,
+      tags: dedupeTagNames(postTags.length > 0 ? postTags : created.tags ?? []),
       createdAt: formatDisplayDate(created.createdAt),
     };
 
@@ -305,6 +333,22 @@ export default function CommunityPage() {
             <Typography className="text-slate-600">
               Community feed with authored posts.
             </Typography>
+
+            {communityTags.length > 0 ? (
+              <div className="flex flex-wrap gap-2 pt-2">
+                {communityTags.map((tag) => (
+                  <Chip
+                    key={`community-tag-${tag}`}
+                    value={`#${tag}`}
+                    size="sm"
+                    variant="ghost"
+                    color="blue"
+                    className="rounded-full"
+                  />
+                ))}
+              </div>
+            ) : null}
+
             <div className="pt-2">
               <Input
                           variant="standard"
@@ -401,6 +445,20 @@ export default function CommunityPage() {
                     </Typography>
                   </div>
                   <Typography className="text-slate-700">{item.content}</Typography>
+                  {Array.isArray(item.tags) && item.tags.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {item.tags.map((tag) => (
+                        <Chip
+                          key={`${item.id}-tag-${tag}`}
+                          value={`#${tag}`}
+                          size="sm"
+                          variant="ghost"
+                          color="blue"
+                          className="rounded-full"
+                        />
+                      ))}
+                    </div>
+                  ) : null}
                   <div className="flex items-center gap-2 border-t border-slate-200 pt-2">
                     <Link href={`/pages/post/${encodeURIComponent(String(item.id))}`}>
                       <Button size="sm" variant="outlined" color="blue-gray" className="rounded-lg">

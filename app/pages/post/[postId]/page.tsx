@@ -16,6 +16,7 @@ type PostItem = {
   title: string;
   content: string;
   communities?: string[];
+  tags?: string[];
   createdAt: string;
 };
 
@@ -129,6 +130,7 @@ export default function PostDetailPage() {
             title: string;
             content: string;
             communities?: string[];
+            tags?: string[];
             createdAt: string;
           };
 
@@ -137,6 +139,7 @@ export default function PostDetailPage() {
             title: parsedPost.title,
             content: parsedPost.content,
             communities: parsedPost.communities,
+            tags: parsedPost.tags,
             createdAt: formatDisplayDate(parsedPost.createdAt),
           });
         } else {
@@ -330,6 +333,21 @@ export default function PostDetailPage() {
                       className="rounded-full"
                     />
                   </Link>
+                ))}
+              </div>
+            ) : null}
+
+            {Array.isArray(post.tags) && post.tags.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {post.tags.map((tag) => (
+                  <Chip
+                    key={`${post.id}-tag-${tag}`}
+                    value={`#${tag}`}
+                    size="sm"
+                    variant="ghost"
+                    color="blue"
+                    className="rounded-full"
+                  />
                 ))}
               </div>
             ) : null}

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
+import { Types } from "mongoose";
 import { authOptions } from "@/app/_lib/auth";
 import { connectToDatabase } from "@/app/_lib/mongoose";
 import { CommunityModel } from "@/app/_lib/models/Community";
@@ -13,6 +14,35 @@ import {
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+type JoinedTagValue =
+  | string
+  | Types.ObjectId
+  | { _id?: Types.ObjectId | string; name?: string }
+  | null
+  | undefined;
+
+function toTagNames(values: JoinedTagValue[] | undefined) {
+  if (!Array.isArray(values)) {
+    return [] as string[];
+  }
+
+  return values
+    .map((item) => {
+      if (!item) return "";
+      if (typeof item === "string") {
+        if (Types.ObjectId.isValid(item)) {
+          return "";
+        }
+        return item.trim().toLowerCase();
+      }
+      if (item instanceof Types.ObjectId) {
+        return "";
+      }
+      return (item.name ?? "").trim().toLowerCase();
+    })
+    .filter(Boolean);
+}
 
 function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
@@ -44,6 +74,7 @@ export async function GET(request: Request) {
     await connectToDatabase();
 
     const communities = await CommunityModel.find({})
+      .populate("tags", "name")
       .sort({ name: 1 })
       .lean();
 
@@ -51,6 +82,7 @@ export async function GET(request: Request) {
       communities.map((community) => ({
         id: String(community._id),
         name: community.name,
+        tags: toTagNames(community.tags as JoinedTagValue[]),
         createdBy: community.createdBy ? String(community.createdBy) : "",
         lastUpdatedBy: community.lastUpdatedBy ? String(community.lastUpdatedBy) : "",
         createdAt: community.createdAt,

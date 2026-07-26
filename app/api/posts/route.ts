@@ -6,6 +6,7 @@ import { connectToDatabase } from "@/app/_lib/mongoose";
 import { PostModel } from "@/app/_lib/models/Post";
 import { UserProfileModel } from "@/app/_lib/models/UserProfile";
 import { CommunityModel } from "@/app/_lib/models/Community";
+import { TagModel } from "@/app/_lib/models/Tag";
 import { checkRateLimit } from "@/app/_lib/rate-limit";
 import {
   getApiErrorMessage,
@@ -74,24 +75,51 @@ type JoinedCommunityValue =
   | null
   | undefined;
 
-function toCommunityNames(values: JoinedCommunityValue[] | undefined) {
+type JoinedTagValue =
+  | string
+  | Types.ObjectId
+  | { _id?: Types.ObjectId | string; name?: string }
+  | null
+  | undefined;
+
+function extractObjectIdStrings(values: Array<string | Types.ObjectId | null | undefined>) {
+  const ids = new Set<string>();
+
+  for (const value of values) {
+    if (!value) continue;
+    const id = String(value);
+    if (Types.ObjectId.isValid(id)) {
+      ids.add(id);
+    }
+  }
+
+  return [...ids];
+}
+
+function resolveRefNames(
+  values: Array<string | Types.ObjectId | { name?: string } | null | undefined> | undefined,
+  nameById: Map<string, string>,
+) {
   if (!Array.isArray(values)) {
     return [] as string[];
   }
 
   return values
-    .map((item) => {
-      if (!item) return "";
-      if (typeof item === "string") {
-        if (Types.ObjectId.isValid(item)) {
-          return "";
-        }
-        return item.trim().toLowerCase();
-      }
-      if (item instanceof Types.ObjectId) {
+    .map((value) => {
+      if (!value) {
         return "";
       }
-      return (item.name ?? "").trim().toLowerCase();
+
+      if (typeof value === "object" && "name" in value) {
+        return (value.name ?? "").trim().toLowerCase();
+      }
+
+      const raw = String(value);
+      if (Types.ObjectId.isValid(raw)) {
+        return (nameById.get(raw) ?? "").trim().toLowerCase();
+      }
+
+      return raw.trim().toLowerCase();
     })
     .filter(Boolean);
 }
@@ -118,17 +146,50 @@ export async function GET(request: Request) {
         : {};
 
     const posts = await PostModel.find(query)
-      .populate("communities", "name")
       .sort({ createdAt: -1 })
       .limit(500)
       .lean();
+
+    const communityRefIds = extractObjectIdStrings(
+      posts.flatMap((post) =>
+        Array.isArray(post.communities)
+          ? (post.communities as Array<string | Types.ObjectId>)
+          : [],
+      ),
+    );
+
+    const tagRefIds = extractObjectIdStrings(
+      posts.flatMap((post) =>
+        Array.isArray(post.tags) ? (post.tags as Array<string | Types.ObjectId>) : [],
+      ),
+    );
+
+    const [communities, tags] = await Promise.all([
+      communityRefIds.length > 0
+        ? CommunityModel.find({ _id: { $in: communityRefIds } }, { _id: 1, name: 1 }).lean()
+        : Promise.resolve([]),
+      tagRefIds.length > 0
+        ? TagModel.find({ _id: { $in: tagRefIds } }, { _id: 1, name: 1 }).lean()
+        : Promise.resolve([]),
+    ]);
+
+    const communityNameById = new Map<string, string>(
+      communities.map((community) => [String(community._id), community.name]),
+    );
+    const tagNameById = new Map<string, string>(
+      tags.map((tag) => [String(tag._id), tag.name]),
+    );
 
     return NextResponse.json(
       posts.map((post) => ({
         id: String(post._id),
         title: post.title,
         content: post.content,
-        communities: toCommunityNames(post.communities as JoinedCommunityValue[]),
+        communities: resolveRefNames(
+          post.communities as JoinedCommunityValue[] | undefined,
+          communityNameById,
+        ),
+        tags: resolveRefNames(post.tags as JoinedTagValue[] | undefined, tagNameById),
         createdBy: post.createdBy ? String(post.createdBy) : "",
         lastUpdatedBy: post.lastUpdatedBy ? String(post.lastUpdatedBy) : "",
         createdAt: post.createdAt,
@@ -227,23 +288,51 @@ export async function POST(request: Request) {
       lastUpdatedBy: actorProfileId,
     });
 
-    const populatedCreated = await PostModel.findById(created._id)
-      .populate("communities", "name")
-      .lean();
+    const createdDoc = await PostModel.findById(created._id).lean();
+
+    const createdCommunityIds = extractObjectIdStrings(
+      Array.isArray(createdDoc?.communities)
+        ? (createdDoc.communities as Array<string | Types.ObjectId>)
+        : [],
+    );
+    const createdTagIds = extractObjectIdStrings(
+      Array.isArray(createdDoc?.tags) ? (createdDoc.tags as Array<string | Types.ObjectId>) : [],
+    );
+
+    const [createdCommunities, createdTags] = await Promise.all([
+      createdCommunityIds.length > 0
+        ? CommunityModel.find({ _id: { $in: createdCommunityIds } }, { _id: 1, name: 1 }).lean()
+        : Promise.resolve([]),
+      createdTagIds.length > 0
+        ? TagModel.find({ _id: { $in: createdTagIds } }, { _id: 1, name: 1 }).lean()
+        : Promise.resolve([]),
+    ]);
+
+    const createdCommunityNameById = new Map<string, string>(
+      createdCommunities.map((community) => [String(community._id), community.name]),
+    );
+    const createdTagNameById = new Map<string, string>(
+      createdTags.map((tag) => [String(tag._id), tag.name]),
+    );
 
     return NextResponse.json(
       {
         requestId,
-        id: String(populatedCreated?._id ?? created._id),
-        title: populatedCreated?.title ?? created.title,
-        content: populatedCreated?.content ?? created.content,
-        communities: toCommunityNames(
-          (populatedCreated?.communities as JoinedCommunityValue[] | undefined) ?? [],
+        id: String(createdDoc?._id ?? created._id),
+        title: createdDoc?.title ?? created.title,
+        content: createdDoc?.content ?? created.content,
+        communities: resolveRefNames(
+          (createdDoc?.communities as JoinedCommunityValue[] | undefined) ?? [],
+          createdCommunityNameById,
         ),
-        createdBy: populatedCreated?.createdBy ? String(populatedCreated.createdBy) : "",
-        lastUpdatedBy: populatedCreated?.lastUpdatedBy ? String(populatedCreated.lastUpdatedBy) : "",
-        createdAt: populatedCreated?.createdAt ?? created.createdAt,
-        updatedAt: populatedCreated?.updatedAt ?? created.updatedAt,
+        tags: resolveRefNames(
+          (createdDoc?.tags as JoinedTagValue[] | undefined) ?? [],
+          createdTagNameById,
+        ),
+        createdBy: createdDoc?.createdBy ? String(createdDoc.createdBy) : "",
+        lastUpdatedBy: createdDoc?.lastUpdatedBy ? String(createdDoc.lastUpdatedBy) : "",
+        createdAt: createdDoc?.createdAt ?? created.createdAt,
+        updatedAt: createdDoc?.updatedAt ?? created.updatedAt,
       },
       {
         status: 201,

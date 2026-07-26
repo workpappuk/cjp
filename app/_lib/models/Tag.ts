@@ -43,7 +43,6 @@ const tagSchema = new Schema(
 );
 
 tagSchema.index({ normalizedName: 1 }, { unique: true });
-tagSchema.index({ normalizedName: 1 });
 
 // Keep normalizedName in sync for uniqueness/filtering.
 tagSchema.pre("validate", function syncNormalizedName() {
