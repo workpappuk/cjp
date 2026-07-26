@@ -4,7 +4,19 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Button, Card, CardBody, Typography } from "@/app/_types/mtw";
+import {
+  Button,
+  Card,
+  CardBody,
+  Spinner,
+  Timeline,
+  TimelineItem,
+  TimelineConnector,
+  TimelineHeader,
+  TimelineIcon,
+  TimelineBody,
+  Typography,
+} from "@/app/_types/mtw";
 import AppNavbar from "@/app/_components/AppNavbar";
 import { useTheme } from "@/app/_context/theme-context";
 import { isAuthenticated } from "@/app/_utils/auth";
@@ -111,6 +123,18 @@ function buildActorLabel(item: AuditItem) {
   return item.actorId ?? "-";
 }
 
+function getTimelineIconColor(operation: AuditOperation | "create" | "update") {
+  if (operation === "create") {
+    return "green" as const;
+  }
+
+  if (operation === "update") {
+    return "blue" as const;
+  }
+
+  return "blue-gray" as const;
+}
+
 export default function AdminAuditPage() {
   const { status } = useSession();
   const router = useRouter();
@@ -118,6 +142,7 @@ export default function AdminAuditPage() {
   const { accent } = getThemeColorTokens(theme);
 
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isCheckingAdmin, setIsCheckingAdmin] = useState(true);
   const [error, setError] = useState("");
   const [auditModelName, setAuditModelName] = useState<AuditModelName>("Post");
   const [auditDocumentId, setAuditDocumentId] = useState("");
@@ -161,6 +186,12 @@ export default function AdminAuditPage() {
         }
 
         setError("Failed to load admin profile.");
+      } finally {
+        if (!isMounted) {
+          return;
+        }
+
+        setIsCheckingAdmin(false);
       }
     };
 
@@ -236,6 +267,17 @@ export default function AdminAuditPage() {
     setAuditQueue(defaultAuditQueueState());
     await fetchAudit();
   };
+
+  if (status === "loading" || isCheckingAdmin) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+        <div className="inline-flex items-center gap-3">
+          <Spinner className="h-5 w-5" />
+          <Typography>Loading audit page...</Typography>
+        </div>
+      </main>
+    );
+  }
 
   if (!isAdmin) {
     return null;
@@ -329,7 +371,12 @@ export default function AdminAuditPage() {
                   }}
                   disabled={auditQueue.loading}
                 >
-                  {auditQueue.loading ? "Loading..." : "Search Audit"}
+                  {auditQueue.loading ? (
+                    <span className="inline-flex items-center gap-2">
+                      <Spinner className="h-4 w-4" />
+                      Loading...
+                    </span>
+                  ) : "Search Audit"}
                 </Button>
               </div>
 
@@ -338,50 +385,63 @@ export default function AdminAuditPage() {
               {auditQueue.items.length === 0 ? (
                 <Typography className="text-slate-700 dark:text-slate-200">No audit events loaded yet. Run a search.</Typography>
               ) : (
-                <div className="space-y-2">
-                  {auditQueue.items.map((item) => (
-                    <div key={item.id} className="rounded-xl border border-slate-200 bg-slate-50/60 p-3 dark:border-slate-700 dark:bg-slate-800/70">
-                      <Typography className="text-sm font-semibold text-blue-gray-900 dark:text-slate-100">
-                        {item.modelName} • {item.operation}
-                      </Typography>
-                      <Typography className="pt-1 text-xs text-slate-700 dark:text-slate-300">
-                        doc: {buildAuditDocumentLabel(item)} • at: {item.changedAt ? formatDisplayDate(item.changedAt) : "-"}
-                      </Typography>
-                      <Typography className="pt-1 text-xs text-slate-700 dark:text-slate-300">
-                        actor: {buildActorLabel(item)} • source: {item.source ?? "-"} • req: {item.requestId ?? "-"}
-                      </Typography>
+                <Timeline>
+                  {auditQueue.items.map((item, index) => (
+                    <TimelineItem key={item.id} className="pb-8 last:pb-0">
+                      {index < auditQueue.items.length - 1 ? <TimelineConnector className="!w-[2px] bg-slate-300 dark:bg-slate-700" /> : null}
 
-                      {item.delta.length === 0 ? (
-                        <Typography className="pt-2 text-xs text-slate-700 dark:text-slate-200">No field deltas.</Typography>
-                      ) : (
-                        <div className="mt-2 overflow-x-auto">
-                          <table className="min-w-full border-collapse text-left text-xs">
-                            <thead>
-                              <tr className="border-b border-slate-200 text-slate-700 dark:border-slate-700 dark:text-slate-300">
-                                <th className="py-1 pr-2 font-medium">Field</th>
-                                <th className="py-1 pr-2 font-medium">From</th>
-                                <th className="py-1 font-medium">To</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {item.delta.map((change, index) => (
-                                <tr key={`${item.id}-${change.path}-${index}`} className="border-b border-slate-100 align-top dark:border-slate-700">
-                                  <td className="py-1 pr-2 text-blue-gray-900 dark:text-slate-100">{change.path}</td>
-                                  <td className="py-1 pr-2 text-slate-700 dark:text-slate-200">
-                                    {renderAuditValue(change.from)}
-                                  </td>
-                                  <td className="py-1 text-slate-700 dark:text-slate-200">
-                                    {renderAuditValue(change.to)}
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
+                      <TimelineHeader>
+                        <TimelineIcon color={getTimelineIconColor(item.operation)} />
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                          <Typography className="text-sm font-semibold text-blue-gray-900 dark:text-slate-100">
+                            {item.modelName}
+                          </Typography>
+                          <span className="text-xs font-medium uppercase tracking-wide text-slate-700 dark:text-slate-300">
+                            {item.operation}
+                          </span>
                         </div>
-                      )}
-                    </div>
+                      </TimelineHeader>
+
+                      <TimelineBody className="mt-2 rounded-xl border border-slate-200 bg-slate-50/60 p-3 dark:border-slate-700 dark:bg-slate-800/70">
+                        <Typography className="text-xs text-slate-700 dark:text-slate-300">
+                          doc: {buildAuditDocumentLabel(item)} • at: {item.changedAt ? formatDisplayDate(item.changedAt) : "-"}
+                        </Typography>
+                        <Typography className="pt-1 text-xs text-slate-700 dark:text-slate-300">
+                          actor: {buildActorLabel(item)} • source: {item.source ?? "-"} • req: {item.requestId ?? "-"}
+                        </Typography>
+
+                        {item.delta.length === 0 ? (
+                          <Typography className="pt-2 text-xs text-slate-700 dark:text-slate-200">No field deltas.</Typography>
+                        ) : (
+                          <div className="mt-2 overflow-x-auto">
+                            <table className="min-w-full border-collapse text-left text-xs">
+                              <thead>
+                                <tr className="border-b border-slate-200 text-slate-700 dark:border-slate-700 dark:text-slate-300">
+                                  <th className="py-1 pr-2 font-medium">Field</th>
+                                  <th className="py-1 pr-2 font-medium">From</th>
+                                  <th className="py-1 font-medium">To</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {item.delta.map((change, deltaIndex) => (
+                                  <tr key={`${item.id}-${change.path}-${deltaIndex}`} className="border-b border-slate-100 align-top dark:border-slate-700">
+                                    <td className="py-1 pr-2 text-blue-gray-900 dark:text-slate-100">{change.path}</td>
+                                    <td className="py-1 pr-2 text-slate-700 dark:text-slate-200">
+                                      {renderAuditValue(change.from)}
+                                    </td>
+                                    <td className="py-1 text-slate-700 dark:text-slate-200">
+                                      {renderAuditValue(change.to)}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                      </TimelineBody>
+                    </TimelineItem>
                   ))}
-                </div>
+                </Timeline>
               )}
 
               {auditQueue.hasMore ? (
@@ -397,7 +457,12 @@ export default function AdminAuditPage() {
                   }}
                   disabled={auditQueue.loading}
                 >
-                  {auditQueue.loading ? "Loading..." : "Load More Audit Events"}
+                  {auditQueue.loading ? (
+                    <span className="inline-flex items-center gap-2">
+                      <Spinner className="h-4 w-4" />
+                      Loading...
+                    </span>
+                  ) : "Load More Audit Events"}
                 </Button>
               ) : null}
             </CardBody>

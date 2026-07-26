@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Card, CardBody, Chip, Typography } from "@/app/_types/mtw";
+import { Card, CardBody, Chip, Spinner, Typography } from "@/app/_types/mtw";
 import { HiArrowLeft, HiChatBubbleBottomCenterText } from "react-icons/hi2";
 import AppNavbar from "@/app/_components/AppNavbar";
 import CommentComposer from "@/app/_components/CommentComposer";
@@ -88,6 +88,7 @@ export default function PostDetailPage() {
   const [joinedCommunities, setJoinedCommunities] = useState<string[]>([]);
   const [commentText, setCommentText] = useState("");
   const [submissionNotice, setSubmissionNotice] = useState("");
+  const [isHydrating, setIsHydrating] = useState(true);
 
   const { buttonColor, accent: accentClasses } = getThemeColorTokens(theme);
   const accent = {
@@ -193,6 +194,12 @@ export default function PostDetailPage() {
         setPost(null);
         setComments([]);
         setJoinedCommunities([]);
+      } finally {
+        if (!isMounted) {
+          return;
+        }
+
+        setIsHydrating(false);
       }
     };
 
@@ -279,6 +286,17 @@ export default function PostDetailPage() {
     setJoinedCommunities(nextJoined);
     await persistJoinedCommunities(nextJoined);
   };
+
+  if (status === "loading" || isHydrating) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+        <div className="inline-flex items-center gap-3">
+          <Spinner className="h-5 w-5" />
+          <Typography>Loading post...</Typography>
+        </div>
+      </main>
+    );
+  }
 
   if (!post) {
     return (

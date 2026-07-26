@@ -1,7 +1,7 @@
 "use client";
 
 import { type KeyboardEvent, useEffect, useMemo, useState } from "react";
-import { Button, Input, Typography } from "@/app/_types/mtw";
+import { Button, Input, Spinner, Typography } from "@/app/_types/mtw";
 import { dedupeTagNames, normalizeTagName } from "@/app/_utils/tags";
 
 type TagsPickerProps = {
@@ -47,6 +47,7 @@ export default function TagsPicker({
   const [debouncedDraftTag, setDebouncedDraftTag] = useState("");
   const [remoteSuggestedTags, setRemoteSuggestedTags] = useState<string[]>([]);
   const [errorText, setErrorText] = useState("");
+  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const suggestionClasses = getSuggestionClasses(color);
 
   const normalizedValue = useMemo(() => dedupeTagNames(value), [value]);
@@ -69,6 +70,8 @@ export default function TagsPicker({
     const controller = new AbortController();
 
     const run = async () => {
+      setIsLoadingSuggestions(true);
+
       try {
         const response = await fetch(`/api/tags?search=${encodeURIComponent(query)}`, {
           cache: "no-store",
@@ -91,6 +94,8 @@ export default function TagsPicker({
         if (error instanceof DOMException && error.name === "AbortError") {
           return;
         }
+      } finally {
+        setIsLoadingSuggestions(false);
       }
     };
 
@@ -192,6 +197,8 @@ export default function TagsPicker({
         >
           Add
         </Button>
+
+        {isLoadingSuggestions ? <Spinner className="h-4 w-4" /> : null}
       </div>
 
       {errorText ? (

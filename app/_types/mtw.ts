@@ -12,6 +12,13 @@ import {
   MenuList as MaterialMenuList,
   Option as MaterialOption,
   Select as MaterialSelect,
+  Spinner as MaterialSpinner,
+  Timeline as MaterialTimeline,
+  TimelineBody as MaterialTimelineBody,
+  TimelineConnector as MaterialTimelineConnector,
+  TimelineHeader as MaterialTimelineHeader,
+  TimelineIcon as MaterialTimelineIcon,
+  TimelineItem as MaterialTimelineItem,
   Typography as MaterialTypography,
 } from "@material-tailwind/react";
 
@@ -29,4 +36,11 @@ export const MenuItem = asElement(MaterialMenuItem);
 export const MenuList = asElement(MaterialMenuList);
 export const Option = asElement(MaterialOption);
 export const Select = asElement(MaterialSelect);
+export const Spinner = asElement(MaterialSpinner);
+export const Timeline = asElement(MaterialTimeline);
+export const TimelineBody = asElement(MaterialTimelineBody);
+export const TimelineConnector = asElement(MaterialTimelineConnector);
+export const TimelineHeader = asElement(MaterialTimelineHeader);
+export const TimelineIcon = asElement(MaterialTimelineIcon);
+export const TimelineItem = asElement(MaterialTimelineItem);
 export const Typography = asElement(MaterialTypography);

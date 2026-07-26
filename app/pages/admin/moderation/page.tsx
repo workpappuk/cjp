@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Button, Card, CardBody, Chip, Typography } from "@/app/_types/mtw";
+import { Button, Card, CardBody, Chip, Spinner, Typography } from "@/app/_types/mtw";
 import AppNavbar from "@/app/_components/AppNavbar";
 import { useTheme } from "@/app/_context/theme-context";
 import { isAuthenticated } from "@/app/_utils/auth";
@@ -130,6 +130,7 @@ export default function AdminModerationPage() {
   const { accent } = getThemeColorTokens(theme);
 
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isCheckingAdmin, setIsCheckingAdmin] = useState(true);
   const [isLoadingSummary, setIsLoadingSummary] = useState(true);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [error, setError] = useState("");
@@ -244,6 +245,7 @@ export default function AdminModerationPage() {
         setError("Failed to load admin data.");
       } finally {
         if (!isMounted) return;
+        setIsCheckingAdmin(false);
         setIsLoadingSummary(false);
       }
     };
@@ -370,6 +372,17 @@ export default function AdminModerationPage() {
     });
   };
 
+  if (status === "loading" || isCheckingAdmin) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+        <div className="inline-flex items-center gap-3">
+          <Spinner className="h-5 w-5" />
+          <Typography>Loading moderation page...</Typography>
+        </div>
+      </main>
+    );
+  }
+
   if (!isAdmin) {
     return null;
   }
@@ -431,7 +444,12 @@ export default function AdminModerationPage() {
                 {pendingTotal.toLocaleString()} pending items requiring admin attention.
               </Typography>
               {error ? <Typography className="text-red-600">{error}</Typography> : null}
-              {isLoadingSummary ? <Typography className="text-slate-700 dark:text-slate-200">Loading summary...</Typography> : null}
+              {isLoadingSummary ? (
+                <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200">
+                  <Spinner className="h-4 w-4" />
+                  <Typography>Loading summary...</Typography>
+                </div>
+              ) : null}
             </CardBody>
           </Card>
 
@@ -528,8 +546,13 @@ export default function AdminModerationPage() {
                     })
                   }
                   disabled={postQueue.loading}
-                >
-                  {postQueue.loading ? "Loading..." : "Load More Posts"}
+                  >
+                    {postQueue.loading ? (
+                      <span className="inline-flex items-center gap-2">
+                        <Spinner className="h-4 w-4" />
+                        Loading...
+                      </span>
+                    ) : "Load More Posts"}
                 </Button>
               ) : null}
             </CardBody>
@@ -625,8 +648,13 @@ export default function AdminModerationPage() {
                     })
                   }
                   disabled={communityQueue.loading}
-                >
-                  {communityQueue.loading ? "Loading..." : "Load More Communities"}
+                  >
+                    {communityQueue.loading ? (
+                      <span className="inline-flex items-center gap-2">
+                        <Spinner className="h-4 w-4" />
+                        Loading...
+                      </span>
+                    ) : "Load More Communities"}
                 </Button>
               ) : null}
             </CardBody>
@@ -723,8 +751,13 @@ export default function AdminModerationPage() {
                     })
                   }
                   disabled={commentQueue.loading}
-                >
-                  {commentQueue.loading ? "Loading..." : "Load More Comments"}
+                  >
+                    {commentQueue.loading ? (
+                      <span className="inline-flex items-center gap-2">
+                        <Spinner className="h-4 w-4" />
+                        Loading...
+                      </span>
+                    ) : "Load More Comments"}
                 </Button>
               ) : null}
             </CardBody>

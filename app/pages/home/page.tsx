@@ -13,7 +13,7 @@ import {
   HiPencilSquare,
   HiUserPlus,
 } from "react-icons/hi2";
-import { Button, Card, CardBody, Chip, Input, Typography } from "@/app/_types/mtw";
+import { Button, Card, CardBody, Chip, Input, Spinner, Typography } from "@/app/_types/mtw";
 import { useTheme } from "@/app/_context/theme-context";
 import AppNavbar from "@/app/_components/AppNavbar";
 import PostComposer from "@/app/_components/PostComposer";
@@ -64,6 +64,7 @@ export default function HomePage() {
   const [isMobileRightModalOpen, setIsMobileRightModalOpen] = useState(false);
   const [activeComposer, setActiveComposer] = useState<"post" | "community">("post");
   const [submissionNotice, setSubmissionNotice] = useState("");
+  const [isHydrating, setIsHydrating] = useState(true);
   const discoverListRef = useRef<HTMLDivElement | null>(null);
   const feedListRef = useRef<HTMLDivElement | null>(null);
 
@@ -280,6 +281,12 @@ export default function HomePage() {
         setCommunityTagsByName({});
         setAvailableTags([]);
         setJoinedCommunities([]);
+      } finally {
+        if (!isMounted) {
+          return;
+        }
+
+        setIsHydrating(false);
       }
     };
 
@@ -693,6 +700,17 @@ export default function HomePage() {
       )}
     </>
   );
+
+  if (status === "loading" || isHydrating) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+        <div className="inline-flex items-center gap-3">
+          <Spinner className="h-5 w-5" />
+          <Typography>Loading home feed...</Typography>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">

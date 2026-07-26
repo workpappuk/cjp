@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Button, Card, CardBody, Chip, Input, Typography } from "@/app/_types/mtw";
+import { Button, Card, CardBody, Chip, Input, Spinner, Typography } from "@/app/_types/mtw";
 import { HiArrowLeft, HiCheckCircle, HiUserPlus } from "react-icons/hi2";
 import AppNavbar from "@/app/_components/AppNavbar";
 import PostComposer from "@/app/_components/PostComposer";
@@ -52,6 +52,7 @@ export default function CommunityPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [visibleCount, setVisibleCount] = useState(INITIAL_FEED_RENDER_COUNT);
   const [submissionNotice, setSubmissionNotice] = useState("");
+  const [isHydrating, setIsHydrating] = useState(true);
 
   const { buttonColor, accent: accentClasses } = getThemeColorTokens(theme);
   const accent = {
@@ -183,6 +184,12 @@ export default function CommunityPage() {
         setAvailableTags([]);
         setCommunityTags([]);
         setJoinedCommunities([]);
+      } finally {
+        if (!isMounted) {
+          return;
+        }
+
+        setIsHydrating(false);
       }
     };
 
@@ -309,6 +316,17 @@ export default function CommunityPage() {
     setJoinedCommunities(nextJoined);
     await persistJoinedCommunities(nextJoined);
   };
+
+  if (status === "loading" || isHydrating) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+        <div className="inline-flex items-center gap-3">
+          <Spinner className="h-5 w-5" />
+          <Typography>Loading community feed...</Typography>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Card, CardBody, Typography } from "@/app/_types/mtw";
+import { Card, CardBody, Spinner, Typography } from "@/app/_types/mtw";
 import AppNavbar from "@/app/_components/AppNavbar";
 import { useTheme } from "@/app/_context/theme-context";
 import { isAuthenticated } from "@/app/_utils/auth";
@@ -17,6 +17,7 @@ export default function AdminDashboardPage() {
   const { accent } = getThemeColorTokens(theme);
 
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isCheckingAdmin, setIsCheckingAdmin] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -58,6 +59,12 @@ export default function AdminDashboardPage() {
         }
 
         setError("Failed to load admin profile.");
+      } finally {
+        if (!isMounted) {
+          return;
+        }
+
+        setIsCheckingAdmin(false);
       }
     };
 
@@ -67,6 +74,17 @@ export default function AdminDashboardPage() {
       isMounted = false;
     };
   }, [router, status]);
+
+  if (status === "loading" || isCheckingAdmin) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+        <div className="inline-flex items-center gap-3">
+          <Spinner className="h-5 w-5" />
+          <Typography>Loading dashboard...</Typography>
+        </div>
+      </main>
+    );
+  }
 
   if (!isAdmin) {
     return null;
