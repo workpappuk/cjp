@@ -29,6 +29,10 @@ const userProfileSchema = new Schema(
       default: "google",
       maxlength: 40,
     },
+    isAdmin: {
+      type: Boolean,
+      default: false,
+    },
     bio: {
       type: String,
       trim: true,
