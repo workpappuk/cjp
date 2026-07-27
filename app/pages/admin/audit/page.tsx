@@ -18,6 +18,7 @@ import {
   Typography,
 } from "@/app/_types/mtw";
 import AppNavbar from "@/app/_components/AppNavbar";
+import AppToast, { type AppToastTone } from "@/app/_components/AppToast";
 import { useTheme } from "@/app/_context/theme-context";
 import { isAuthenticated } from "@/app/_utils/auth";
 import { getThemeColorTokens } from "@/app/_utils/theme-colors";
@@ -143,11 +144,19 @@ export default function AdminAuditPage() {
 
   const [isAdmin, setIsAdmin] = useState(false);
   const [isCheckingAdmin, setIsCheckingAdmin] = useState(true);
-  const [error, setError] = useState("");
+  const [toast, setToast] = useState<{ open: boolean; message: string; tone: AppToastTone }>({
+    open: false,
+    message: "",
+    tone: "info",
+  });
   const [auditModelName, setAuditModelName] = useState<AuditModelName>("Post");
   const [auditDocumentId, setAuditDocumentId] = useState("");
   const [auditOperation, setAuditOperation] = useState<AuditOperation>("all");
   const [auditQueue, setAuditQueue] = useState<AuditQueueState>(defaultAuditQueueState);
+
+  const showToast = (message: string, tone: AppToastTone = "info") => {
+    setToast({ open: true, message, tone });
+  };
 
   useEffect(() => {
     if (status === "loading") {
@@ -185,7 +194,7 @@ export default function AdminAuditPage() {
           return;
         }
 
-        setError("Failed to load admin profile.");
+        showToast("Failed to load admin profile.", "error");
       } finally {
         if (!isMounted) {
           return;
@@ -258,12 +267,11 @@ export default function AdminAuditPage() {
     } catch (caughtError) {
       setAuditQueue((prev) => ({ ...prev, loading: false }));
       const message = caughtError instanceof Error ? caughtError.message : "Failed to load audit history.";
-      setError(message);
+      showToast(message, "error");
     }
   };
 
   const runAuditSearch = async () => {
-    setError("");
     setAuditQueue(defaultAuditQueueState());
     await fetchAudit();
   };
@@ -287,7 +295,7 @@ export default function AdminAuditPage() {
     <main className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
       <AppNavbar
         subtitle="Admin audit"
-        maxWidthClassName="max-w-6xl"
+        maxWidthClassName="max-w-none"
         rightContent={(
           <div className="flex items-center gap-2">
             <Link
@@ -318,8 +326,8 @@ export default function AdminAuditPage() {
         )}
       />
 
-      <div className="mx-auto w-full max-w-6xl space-y-8 px-6 py-8 sm:px-10 lg:px-16">
-        <section className={`space-y-4 rounded-2xl border bg-gradient-to-b from-slate-50 to-white p-4 sm:p-5 dark:from-slate-950 dark:to-slate-900 ${accent.section}`}>
+      <div className="mx-auto w-full max-w-none space-y-8 px-6 py-8 sm:px-10 lg:px-16">
+        <section className={`space-y-4 rounded-2xl border bg-linear-to-b from-slate-50 to-white p-4 sm:p-5 dark:from-slate-950 dark:to-slate-900 ${accent.section}`}>
           <div>
             <Typography variant="h5" className={accent.title}>
               Audit
@@ -381,15 +389,13 @@ export default function AdminAuditPage() {
                 </Button>
               </div>
 
-              {error ? <Typography className="text-red-600">{error}</Typography> : null}
-
               {auditQueue.items.length === 0 ? (
                 <Typography className="text-slate-700 dark:text-slate-200">No audit events loaded yet. Run a search.</Typography>
               ) : (
                 <Timeline>
                   {auditQueue.items.map((item, index) => (
                     <TimelineItem key={item.id} className="pb-8 last:pb-0">
-                      {index < auditQueue.items.length - 1 ? <TimelineConnector className="!w-[2px] bg-slate-300 dark:bg-slate-700" /> : null}
+                      {index < auditQueue.items.length - 1 ? <TimelineConnector className="w-0.5! bg-slate-300 dark:bg-slate-700" /> : null}
 
                       <TimelineHeader>
                         <TimelineIcon color={getTimelineIconColor(item.operation)} />
@@ -471,6 +477,12 @@ export default function AdminAuditPage() {
           </Card>
         </section>
       </div>
+      <AppToast
+        open={toast.open}
+        message={toast.message}
+        tone={toast.tone}
+        onClose={() => setToast((prev) => ({ ...prev, open: false }))}
+      />
     </main>
   );
 }

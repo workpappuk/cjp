@@ -8,12 +8,14 @@ import { useSession } from "next-auth/react";
 import { Button, Card, CardBody, Chip, Input, Spinner, Typography } from "@/app/_types/mtw";
 import { HiArrowLeft, HiCheckCircle, HiUserPlus } from "react-icons/hi2";
 import AppNavbar from "@/app/_components/AppNavbar";
+import AppToast, { type AppToastTone } from "@/app/_components/AppToast";
 import PostComposer from "@/app/_components/PostComposer";
 import TagsPicker from "@/app/_components/TagsPicker";
 import { useTheme } from "@/app/_context/theme-context";
 import { isAuthenticated } from "@/app/_utils/auth";
 import { getThemeColorTokens } from "@/app/_utils/theme-colors";
 import { attachTagsToTarget, dedupeTagNames } from "@/app/_utils/tags";
+import { updateJoinedCommunitiesWithConflictRetry } from "@/app/_utils/api";
 
 const INITIAL_FEED_RENDER_COUNT = 30;
 const FEED_LOAD_STEP = 30;
@@ -51,8 +53,12 @@ export default function CommunityPage() {
   const [joinedCommunities, setJoinedCommunities] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [visibleCount, setVisibleCount] = useState(INITIAL_FEED_RENDER_COUNT);
-  const [submissionNotice, setSubmissionNotice] = useState("");
   const [isHydrating, setIsHydrating] = useState(true);
+  const [toast, setToast] = useState<{ open: boolean; message: string; tone: AppToastTone }>({
+    open: false,
+    message: "",
+    tone: "info",
+  });
 
   const { buttonColor, accent: accentClasses } = getThemeColorTokens(theme);
   const accent = {
@@ -62,13 +68,18 @@ export default function CommunityPage() {
     section: accentClasses.section,
   };
 
-  const persistJoinedCommunities = async (nextJoined: string[]) => {
-    await fetch("/api/user-profile", {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ joinedCommunities: nextJoined }),
+  const showToast = (message: string, tone: AppToastTone = "info") => {
+    setToast({ open: true, message, tone });
+  };
+
+  const persistJoinedCommunities = async (
+    nextJoined: string[],
+    mergeOnConflict?: (latest: string[], intended: string[]) => string[],
+  ) => {
+    return updateJoinedCommunitiesWithConflictRetry({
+      nextJoinedCommunities: nextJoined,
+      retries: 1,
+      mergeOnConflict,
     });
   };
 
@@ -242,7 +253,6 @@ export default function CommunityPage() {
   const handleCreatePost = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!isJoined || postComposerDisabled) return;
-    setSubmissionNotice("");
 
     const response = await fetch("/api/posts", {
       method: "POST",
@@ -270,17 +280,21 @@ export default function CommunityPage() {
       createdAt: string;
     };
 
-    await attachTagsToTarget({
+    const tagAttach = await attachTagsToTarget({
       targetType: "Post",
       targetId: created.id,
       tags: postTags,
     });
 
+    if (tagAttach.didRetry) {
+      showToast("Tag update retried after a concurrent change.", "warning");
+    }
+
     if (created.moderationStatus === "pending") {
       setPostTitle("");
       setPostContent("");
       setPostTags([]);
-      setSubmissionNotice("Post submitted for admin approval.");
+      showToast("Post submitted for admin approval.", "info");
       return;
     }
 
@@ -306,7 +320,20 @@ export default function CommunityPage() {
 
     const nextJoined = [...joinedCommunities, normalizedCommunityName];
     setJoinedCommunities(nextJoined);
-    await persistJoinedCommunities(nextJoined);
+    const result = await persistJoinedCommunities(nextJoined, (latest, intended) => [
+      ...latest,
+      ...intended,
+      normalizedCommunityName,
+    ]);
+
+    if (!result.response.ok) {
+      showToast("Failed to join community. Please retry.", "error");
+      return;
+    }
+
+    if (result.didRetry) {
+      showToast("Join saved after resolving a concurrent update.", "success");
+    }
   };
 
   const handleLeaveCommunity = async () => {
@@ -314,7 +341,18 @@ export default function CommunityPage() {
 
     const nextJoined = joinedCommunities.filter((item) => item !== normalizedCommunityName);
     setJoinedCommunities(nextJoined);
-    await persistJoinedCommunities(nextJoined);
+    const result = await persistJoinedCommunities(nextJoined, (latest) =>
+      latest.filter((item) => item !== normalizedCommunityName),
+    );
+
+    if (!result.response.ok) {
+      showToast("Failed to leave community. Please retry.", "error");
+      return;
+    }
+
+    if (result.didRetry) {
+      showToast("Leave saved after resolving a concurrent update.", "success");
+    }
   };
 
   if (status === "loading" || isHydrating) {
@@ -332,7 +370,7 @@ export default function CommunityPage() {
     <main className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
       <AppNavbar
         subtitle={`Community • ${communityName}`}
-        maxWidthClassName="max-w-5xl"
+        maxWidthClassName="max-w-none"
         centerContent={(
           <>
             <Chip
@@ -359,13 +397,7 @@ export default function CommunityPage() {
         )}
       />
 
-      <div className="mx-auto w-full max-w-5xl space-y-4 px-6 py-8 sm:px-10 lg:px-16">
-
-        {submissionNotice ? (
-          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-200">
-            {submissionNotice}
-          </div>
-        ) : null}
+      <div className="mx-auto w-full max-w-none space-y-4 px-6 py-8 sm:px-10 lg:px-16">
 
         <Card className={`rounded-2xl border bg-white shadow-none dark:bg-slate-900 ${accent.section}`}>
           <CardBody className="space-y-3 p-5">
@@ -555,6 +587,12 @@ export default function CommunityPage() {
           </div>
         )}
       </div>
+      <AppToast
+        open={toast.open}
+        message={toast.message}
+        tone={toast.tone}
+        onClose={() => setToast((prev) => ({ ...prev, open: false }))}
+      />
     </main>
   );
 }

@@ -8,10 +8,12 @@ import { useSession } from "next-auth/react";
 import { Card, CardBody, Chip, Spinner, Typography } from "@/app/_types/mtw";
 import { HiArrowLeft, HiChatBubbleBottomCenterText } from "react-icons/hi2";
 import AppNavbar from "@/app/_components/AppNavbar";
+import AppToast, { type AppToastTone } from "@/app/_components/AppToast";
 import CommentComposer from "@/app/_components/CommentComposer";
 import { useTheme } from "@/app/_context/theme-context";
 import { isAuthenticated } from "@/app/_utils/auth";
 import { getThemeColorTokens } from "@/app/_utils/theme-colors";
+import { updateJoinedCommunitiesWithConflictRetry } from "@/app/_utils/api";
 
 type PostItem = {
   id: string | number;
@@ -87,8 +89,12 @@ export default function PostDetailPage() {
   const [comments, setComments] = useState<CommentItem[]>([]);
   const [joinedCommunities, setJoinedCommunities] = useState<string[]>([]);
   const [commentText, setCommentText] = useState("");
-  const [submissionNotice, setSubmissionNotice] = useState("");
   const [isHydrating, setIsHydrating] = useState(true);
+  const [toast, setToast] = useState<{ open: boolean; message: string; tone: AppToastTone }>({
+    open: false,
+    message: "",
+    tone: "info",
+  });
 
   const { buttonColor, accent: accentClasses } = getThemeColorTokens(theme);
   const accent = {
@@ -99,13 +105,15 @@ export default function PostDetailPage() {
   };
 
   const persistJoinedCommunities = async (nextJoined: string[]) => {
-    await fetch("/api/user-profile", {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ joinedCommunities: nextJoined }),
+    return updateJoinedCommunitiesWithConflictRetry({
+      nextJoinedCommunities: nextJoined,
+      retries: 1,
+      mergeOnConflict: (latest, intended) => [...latest, ...intended],
     });
+  };
+
+  const showToast = (message: string, tone: AppToastTone = "info") => {
+    setToast({ open: true, message, tone });
   };
 
   const postId = useMemo(() => {
@@ -237,7 +245,6 @@ export default function PostDetailPage() {
   const handleAddComment = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!canComment) return;
-    setSubmissionNotice("");
 
     const text = commentText.trim();
     if (!text) return;
@@ -263,7 +270,7 @@ export default function PostDetailPage() {
 
     if (created.moderationStatus === "pending") {
       setCommentText("");
-      setSubmissionNotice("Comment submitted for admin approval.");
+      showToast("Comment submitted for admin approval.", "info");
       return;
     }
 
@@ -284,7 +291,16 @@ export default function PostDetailPage() {
 
     const nextJoined = [...joinedCommunities, targetCommunity.toLowerCase()];
     setJoinedCommunities(nextJoined);
-    await persistJoinedCommunities(nextJoined);
+    const result = await persistJoinedCommunities(nextJoined);
+
+    if (!result.response.ok) {
+      showToast("Failed to join community. Please retry.", "error");
+      return;
+    }
+
+    if (result.didRetry) {
+      showToast("Join saved after resolving a concurrent update.", "success");
+    }
   };
 
   if (status === "loading" || isHydrating) {
@@ -303,7 +319,7 @@ export default function PostDetailPage() {
       <main className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
         <AppNavbar
           subtitle="Post discussion"
-          maxWidthClassName="max-w-4xl"
+          maxWidthClassName="max-w-none"
           rightContent={(
             <Link
               href="/pages/home"
@@ -315,7 +331,7 @@ export default function PostDetailPage() {
           )}
         />
 
-        <div className="mx-auto w-full max-w-4xl space-y-4 px-6 py-8 sm:px-10 lg:px-16">
+        <div className="mx-auto w-full max-w-none space-y-4 px-6 py-8 sm:px-10 lg:px-16">
 
           <Card className="border border-dashed border-slate-300 shadow-none dark:border-slate-700 dark:bg-slate-900">
             <CardBody className="p-5">
@@ -331,7 +347,7 @@ export default function PostDetailPage() {
     <main className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
       <AppNavbar
         subtitle="Post discussion"
-        maxWidthClassName="max-w-4xl"
+        maxWidthClassName="max-w-none"
         rightContent={(
           <Link
             href="/pages/home"
@@ -343,7 +359,7 @@ export default function PostDetailPage() {
         )}
       />
 
-      <div className="mx-auto w-full max-w-4xl space-y-4 px-6 py-8 sm:px-10 lg:px-16">
+      <div className="mx-auto w-full max-w-none space-y-4 px-6 py-8 sm:px-10 lg:px-16">
 
         <Card className={`border shadow-none dark:bg-slate-900 ${accent.section}`}>
           <CardBody className="space-y-4 p-5">
@@ -417,12 +433,6 @@ export default function PostDetailPage() {
               color={accent.color}
             />
 
-            {submissionNotice ? (
-              <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-200">
-                {submissionNotice}
-              </div>
-            ) : null}
-
             {comments.length === 0 ? (
               <Typography className="text-slate-700 dark:text-slate-200">No comments yet.</Typography>
             ) : (
@@ -431,6 +441,12 @@ export default function PostDetailPage() {
           </CardBody>
         </Card>
       </div>
+      <AppToast
+        open={toast.open}
+        message={toast.message}
+        tone={toast.tone}
+        onClose={() => setToast((prev) => ({ ...prev, open: false }))}
+      />
     </main>
   );
 }

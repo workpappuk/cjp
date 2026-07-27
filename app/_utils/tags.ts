@@ -1,3 +1,5 @@
+import { apiFetchWithConflictRetry } from "@/app/_utils/api";
+
 export type TagTargetType = "Post" | "Community";
 
 export function normalizeTagName(name: string) {
@@ -25,22 +27,32 @@ export async function attachTagsToTarget(options: {
   const names = dedupeTagNames(options.tags);
 
   if (names.length === 0) {
-    return;
+    return { didRetry: false };
   }
 
-  await Promise.allSettled(
+  const results = await Promise.allSettled(
     names.map((name) =>
-      fetch("/api/tags", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      apiFetchWithConflictRetry(
+        "/api/tags",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            name,
+            targetType: options.targetType,
+            targetId: options.targetId,
+          }),
         },
-        body: JSON.stringify({
-          name,
-          targetType: options.targetType,
-          targetId: options.targetId,
-        }),
-      }),
+        { retries: 1 },
+      ),
     ),
   );
+
+  const didRetry = results.some(
+    (result) => result.status === "fulfilled" && result.value.didRetry,
+  );
+
+  return { didRetry };
 }

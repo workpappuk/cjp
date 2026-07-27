@@ -1,5 +1,6 @@
 import type { ElementType } from "react";
 import {
+  Alert as MaterialAlert,
   Button as MaterialButton,
   Card as MaterialCard,
   CardBody as MaterialCardBody,
@@ -24,6 +25,7 @@ import {
 
 const asElement = (component: unknown): ElementType => component as ElementType;
 
+export const Alert = asElement(MaterialAlert);
 export const Button = asElement(MaterialButton);
 export const Card = asElement(MaterialCard);
 export const CardBody = asElement(MaterialCardBody);

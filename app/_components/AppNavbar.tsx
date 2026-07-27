@@ -23,7 +23,7 @@ export default function AppNavbar({
   centerContent = null,
   rightContent = null,
   profileMenuContent = null,
-  maxWidthClassName = "max-w-7xl",
+  maxWidthClassName = "max-w-none",
 }: AppNavbarProps) {
   const { data: session } = useSession();
   const { theme, setTheme, colorMode, setColorMode } = useTheme();

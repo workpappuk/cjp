@@ -51,7 +51,8 @@ const communitySchema = new Schema(
   },
   {
     timestamps: true,
-    versionKey: false,
+    versionKey: "__v",
+    optimisticConcurrency: true,
   },
 );
 
@@ -66,6 +67,7 @@ export type CommunityDocument = InferSchemaType<typeof communitySchema>;
 if (
   models.Community &&
   (!models.Community.schema.path("tags") ||
+    !models.Community.schema.path("__v") ||
     !models.Community.schema.path("moderationStatus") ||
     !models.Community.schema.path("recordStatus"))
 ) {

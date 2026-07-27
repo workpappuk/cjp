@@ -24,6 +24,13 @@ type TargetInput = {
   targetId?: string;
 };
 
+type VersionedTarget = {
+  _id: Types.ObjectId;
+  createdBy?: Types.ObjectId | string | null;
+  tags?: Array<Types.ObjectId | string>;
+  __v?: number;
+};
+
 function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
 }
@@ -131,10 +138,18 @@ async function upsertDictionaryTag(name: string, actorProfileId: Types.ObjectId)
 
 async function getTargetOwnerAndTags(targetType: TargetType, targetId: string) {
   if (targetType === "Post") {
-    return PostModel.findById(targetId, { createdBy: 1, tags: 1 }).lean();
+    return PostModel.findById(targetId, { createdBy: 1, tags: 1, __v: 1 }).lean();
   }
 
-  return CommunityModel.findById(targetId, { createdBy: 1, tags: 1 }).lean();
+  return CommunityModel.findById(targetId, { createdBy: 1, tags: 1, __v: 1 }).lean();
+}
+
+function getVersionFilter(version: number | undefined) {
+  if (typeof version === "number") {
+    return { __v: version };
+  }
+
+  return { __v: { $exists: false } };
 }
 
 async function ensureOwner(
@@ -142,7 +157,7 @@ async function ensureOwner(
   targetId: string,
   actorProfileId: Types.ObjectId,
 ) {
-  const target = await getTargetOwnerAndTags(targetType, targetId);
+  const target = (await getTargetOwnerAndTags(targetType, targetId)) as VersionedTarget | null;
 
   if (!target) {
     return { error: "Target not found.", status: 404 as const };
@@ -155,32 +170,58 @@ async function ensureOwner(
   return { target };
 }
 
-async function attachTagToTarget(targetType: TargetType, targetId: string, tagId: Types.ObjectId, actorProfileId: Types.ObjectId) {
+async function attachTagToTarget(
+  targetType: TargetType,
+  targetId: string,
+  tagId: Types.ObjectId,
+  actorProfileId: Types.ObjectId,
+  expectedVersion: number | undefined,
+) {
   const update = {
     $addToSet: { tags: tagId },
     $set: { lastUpdatedBy: actorProfileId },
+    $inc: { __v: 1 },
+  };
+
+  const filter = {
+    _id: targetId,
+    ...getVersionFilter(expectedVersion),
   };
 
   if (targetType === "Post") {
-    await PostModel.updateOne({ _id: targetId }, update);
-    return;
+    const result = await PostModel.updateOne(filter, update);
+    return result.matchedCount > 0;
   }
 
-  await CommunityModel.updateOne({ _id: targetId }, update);
+  const result = await CommunityModel.updateOne(filter, update);
+  return result.matchedCount > 0;
 }
 
-async function detachTagFromTarget(targetType: TargetType, targetId: string, tagId: Types.ObjectId, actorProfileId: Types.ObjectId) {
+async function detachTagFromTarget(
+  targetType: TargetType,
+  targetId: string,
+  tagId: Types.ObjectId,
+  actorProfileId: Types.ObjectId,
+  expectedVersion: number | undefined,
+) {
   const update = {
     $pull: { tags: tagId },
     $set: { lastUpdatedBy: actorProfileId },
+    $inc: { __v: 1 },
+  };
+
+  const filter = {
+    _id: targetId,
+    ...getVersionFilter(expectedVersion),
   };
 
   if (targetType === "Post") {
-    await PostModel.updateOne({ _id: targetId }, update);
-    return;
+    const result = await PostModel.updateOne(filter, update);
+    return result.matchedCount > 0;
   }
 
-  await CommunityModel.updateOne({ _id: targetId }, update);
+  const result = await CommunityModel.updateOne(filter, update);
+  return result.matchedCount > 0;
 }
 
 export async function GET(request: Request) {
@@ -460,12 +501,25 @@ export async function POST(request: Request) {
       );
     }
 
-    await attachTagToTarget(
+    const attached = await attachTagToTarget(
       parsed.targetType,
       parsed.targetIdRaw,
       new Types.ObjectId(String(tag._id)),
       actorProfileId,
+      ownership.target.__v,
     );
+
+    if (!attached) {
+      return NextResponse.json(
+        { error: "Conflict: target was modified by another request.", requestId },
+        {
+          status: 409,
+          headers: {
+            "x-request-id": requestId,
+          },
+        },
+      );
+    }
 
     return NextResponse.json(
       {
@@ -668,8 +722,45 @@ export async function PATCH(request: Request) {
     const newTagId = new Types.ObjectId(String(newTag._id));
 
     if (String(oldTagId) !== String(newTagId)) {
-      await detachTagFromTarget(parsed.targetType, parsed.targetIdRaw, oldTagId, actorProfileId);
-      await attachTagToTarget(parsed.targetType, parsed.targetIdRaw, newTagId, actorProfileId);
+      const detached = await detachTagFromTarget(
+        parsed.targetType,
+        parsed.targetIdRaw,
+        oldTagId,
+        actorProfileId,
+        ownership.target.__v,
+      );
+
+      if (!detached) {
+        return NextResponse.json(
+          { error: "Conflict: target was modified by another request.", requestId },
+          {
+            status: 409,
+            headers: {
+              "x-request-id": requestId,
+            },
+          },
+        );
+      }
+
+      const attached = await attachTagToTarget(
+        parsed.targetType,
+        parsed.targetIdRaw,
+        newTagId,
+        actorProfileId,
+        typeof ownership.target.__v === "number" ? ownership.target.__v + 1 : undefined,
+      );
+
+      if (!attached) {
+        return NextResponse.json(
+          { error: "Conflict: target was modified by another request.", requestId },
+          {
+            status: 409,
+            headers: {
+              "x-request-id": requestId,
+            },
+          },
+        );
+      }
     }
 
     return NextResponse.json(
@@ -824,7 +915,25 @@ export async function DELETE(request: Request) {
       );
     }
 
-    await detachTagFromTarget(parsed.targetType, parsed.targetIdRaw, tagId, actorProfileId);
+    const detached = await detachTagFromTarget(
+      parsed.targetType,
+      parsed.targetIdRaw,
+      tagId,
+      actorProfileId,
+      ownership.target.__v,
+    );
+
+    if (!detached) {
+      return NextResponse.json(
+        { error: "Conflict: target was modified by another request.", requestId },
+        {
+          status: 409,
+          headers: {
+            "x-request-id": requestId,
+          },
+        },
+      );
+    }
 
     return NextResponse.json(
       {

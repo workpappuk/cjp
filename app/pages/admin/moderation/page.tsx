@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Button, Card, CardBody, Chip, Spinner, Typography } from "@/app/_types/mtw";
 import AppNavbar from "@/app/_components/AppNavbar";
+import AppToast, { type AppToastTone } from "@/app/_components/AppToast";
 import { useTheme } from "@/app/_context/theme-context";
 import { isAuthenticated } from "@/app/_utils/auth";
 import { getThemeColorTokens } from "@/app/_utils/theme-colors";
@@ -133,7 +134,11 @@ export default function AdminModerationPage() {
   const [isCheckingAdmin, setIsCheckingAdmin] = useState(true);
   const [isLoadingSummary, setIsLoadingSummary] = useState(true);
   const [summary, setSummary] = useState<Summary | null>(null);
-  const [error, setError] = useState("");
+  const [toast, setToast] = useState<{ open: boolean; message: string; tone: AppToastTone }>({
+    open: false,
+    message: "",
+    tone: "info",
+  });
 
   const [postQueue, setPostQueue] = useState<QueueState<ModerationPost>>(defaultQueueState);
   const [communityQueue, setCommunityQueue] = useState<QueueState<ModerationCommunity>>(defaultQueueState);
@@ -142,6 +147,10 @@ export default function AdminModerationPage() {
   const pendingTotal = useMemo(() => {
     return summary?.pending.total ?? 0;
   }, [summary]);
+
+  const showToast = (message: string, tone: AppToastTone = "info") => {
+    setToast({ open: true, message, tone });
+  };
 
   const fetchSummary = async () => {
     const response = await fetch("/api/admin/moderation", { cache: "no-store" });
@@ -184,7 +193,62 @@ export default function AdminModerationPage() {
       }));
     } catch {
       setState((prev) => ({ ...prev, loading: false }));
-      setError(`Failed to load ${targetType} queue.`);
+      showToast(`Failed to load ${targetType} queue.`, "error");
+    }
+  };
+
+  const refreshQueueForTarget = async (targetType: TargetType) => {
+    if (targetType === "Post") {
+      await fetchQueue("Post", setPostQueue, {
+        moderationFilter: postQueue.moderationFilter,
+        recordFilter: postQueue.recordFilter,
+      });
+      return;
+    }
+
+    if (targetType === "Community") {
+      await fetchQueue("Community", setCommunityQueue, {
+        moderationFilter: communityQueue.moderationFilter,
+        recordFilter: communityQueue.recordFilter,
+      });
+      return;
+    }
+
+    await fetchQueue("Comment", setCommentQueue, {
+      moderationFilter: commentQueue.moderationFilter,
+      recordFilter: commentQueue.recordFilter,
+    });
+  };
+
+  const sendModerationPatchWithRetry = async (payload: {
+    targetType: TargetType;
+    targetId: string;
+    action?: "approve" | "reject";
+    recordStatus?: RecordStatus;
+  }) => {
+    let didRetryAfterConflict = false;
+
+    while (true) {
+      const response = await fetch("/api/admin/moderation", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (response.status !== 409 || didRetryAfterConflict) {
+        return {
+          response,
+          didRetryAfterConflict,
+        };
+      }
+
+      didRetryAfterConflict = true;
+      await Promise.all([
+        fetchSummary(),
+        refreshQueueForTarget(payload.targetType),
+      ]);
     }
   };
 
@@ -202,7 +266,6 @@ export default function AdminModerationPage() {
 
     const hydrate = async () => {
       setIsLoadingSummary(true);
-      setError("");
 
       try {
         const profileResponse = await fetch("/api/user-profile", { cache: "no-store" });
@@ -242,7 +305,7 @@ export default function AdminModerationPage() {
         ]);
       } catch {
         if (!isMounted) return;
-        setError("Failed to load admin data.");
+        showToast("Failed to load admin data.", "error");
       } finally {
         if (!isMounted) return;
         setIsCheckingAdmin(false);
@@ -262,17 +325,23 @@ export default function AdminModerationPage() {
     targetId: string,
     action: "approve" | "reject",
   ) => {
-    const response = await fetch("/api/admin/moderation", {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ targetType, targetId, action }),
+    const { response, didRetryAfterConflict } = await sendModerationPatchWithRetry({
+      targetType,
+      targetId,
+      action,
     });
 
     if (!response.ok) {
-      setError("Moderation action failed. Please retry.");
+      if (response.status === 409) {
+        showToast("This item changed while you were moderating. Please review and retry.", "warning");
+      } else {
+        showToast("Moderation action failed. Please retry.", "error");
+      }
       return;
+    }
+
+    if (didRetryAfterConflict) {
+      showToast("Moderation saved after resolving a concurrent update.", "success");
     }
 
     const payload = (await response.json()) as {
@@ -309,17 +378,23 @@ export default function AdminModerationPage() {
     targetId: string,
     recordStatus: RecordStatus,
   ) => {
-    const response = await fetch("/api/admin/moderation", {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ targetType, targetId, recordStatus }),
+    const { response, didRetryAfterConflict } = await sendModerationPatchWithRetry({
+      targetType,
+      targetId,
+      recordStatus,
     });
 
     if (!response.ok) {
-      setError("Status update failed. Please retry.");
+      if (response.status === 409) {
+        showToast("This item changed while you were updating it. Please review and retry.", "warning");
+      } else {
+        showToast("Status update failed. Please retry.", "error");
+      }
       return;
+    }
+
+    if (didRetryAfterConflict) {
+      showToast("Record status saved after resolving a concurrent update.", "success");
     }
 
     const payload = (await response.json()) as {
@@ -391,7 +466,7 @@ export default function AdminModerationPage() {
     <main className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
       <AppNavbar
         subtitle="Admin moderation"
-        maxWidthClassName="max-w-6xl"
+        maxWidthClassName="max-w-none"
         rightContent={(
           <div className="flex items-center gap-2">
             <Link
@@ -422,8 +497,8 @@ export default function AdminModerationPage() {
         )}
       />
 
-      <div className="mx-auto w-full max-w-6xl space-y-8 px-6 py-8 sm:px-10 lg:px-16">
-        <section className={`space-y-4 rounded-2xl border bg-gradient-to-b from-white to-slate-50 p-4 sm:p-5 dark:from-slate-900 dark:to-slate-950 ${accent.section}`}>
+      <div className="mx-auto w-full max-w-none space-y-8 px-6 py-8 sm:px-10 lg:px-16">
+        <section className={`space-y-4 rounded-2xl border bg-linear-to-b from-white to-slate-50 p-4 sm:p-5 dark:from-slate-900 dark:to-slate-950 ${accent.section}`}>
           <div className="flex items-center justify-between gap-3">
             <div>
               <Typography variant="h5" className={accent.title}>
@@ -443,7 +518,6 @@ export default function AdminModerationPage() {
               <Typography className="text-slate-700 dark:text-slate-200">
                 {pendingTotal.toLocaleString()} pending items requiring admin attention.
               </Typography>
-              {error ? <Typography className="text-red-600">{error}</Typography> : null}
               {isLoadingSummary ? (
                 <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200">
                   <Spinner className="h-4 w-4" />
@@ -767,6 +841,12 @@ export default function AdminModerationPage() {
           </Card>
         </section>
       </div>
+      <AppToast
+        open={toast.open}
+        message={toast.message}
+        tone={toast.tone}
+        onClose={() => setToast((prev) => ({ ...prev, open: false }))}
+      />
     </main>
   );
 }

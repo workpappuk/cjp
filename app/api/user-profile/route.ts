@@ -31,6 +31,7 @@ type PersistedProfile = {
   createdAt?: Date;
   updatedAt?: Date;
   lastLoginAt?: Date;
+  __v?: number;
 };
 
 type JoinedCommunityValue =
@@ -80,6 +81,14 @@ function isDuplicateKeyError(error: { code?: number } | Error | null | undefined
     "code" in error &&
     (error as { code?: number }).code === 11000
   );
+}
+
+function getVersionFilter(version: number | undefined) {
+  if (typeof version === "number") {
+    return { __v: version };
+  }
+
+  return { __v: { $exists: false } };
 }
 
 async function resolveJoinedCommunityIds(input: string[]) {
@@ -390,6 +399,11 @@ export async function PUT(request: Request) {
     await connectToDatabase();
     await collapseDuplicateProfilesByEmail(auth.email);
 
+    let existingProfile = await UserProfileModel.findOne(
+      { email: auth.email },
+      { _id: 1, __v: 1 },
+    ).lean();
+
     const payload = (await request.json()) as {
       name?: string;
       image?: string;
@@ -480,32 +494,102 @@ export async function PUT(request: Request) {
 
     let profile: PersistedProfile | null = null;
 
-    try {
-      profile = await UserProfileModel.findOneAndUpdate(
-        { email: auth.email },
+    if (existingProfile?._id) {
+      const updateResult = await UserProfileModel.updateOne(
         {
-          $setOnInsert: setOnInsert,
+          _id: existingProfile._id,
+          ...getVersionFilter(
+            typeof existingProfile.__v === "number" ? existingProfile.__v : undefined,
+          ),
+        },
+        {
           $set: nextSet,
+          $inc: { __v: 1 },
         },
-        {
-          upsert: true,
-          returnDocument: "after",
-        },
-      )
-        .populate("joinedCommunities", "name")
-        .lean();
-    } catch (error) {
-      if (!isDuplicateKeyError(error as { code?: number } | Error | null | undefined)) {
-        throw error;
+      );
+
+      if (updateResult.matchedCount === 0) {
+        return NextResponse.json(
+          { error: "Conflict: profile was modified by another request.", requestId },
+          {
+            status: 409,
+            headers: {
+              "x-request-id": requestId,
+            },
+          },
+        );
       }
 
-      await UserProfileModel.updateOne(
-        { email: auth.email },
-        { $set: nextSet },
-      );
-      profile = await UserProfileModel.findOne({ email: auth.email })
+      profile = await UserProfileModel.findById(existingProfile._id)
         .populate("joinedCommunities", "name")
         .lean();
+    } else {
+      try {
+        const createdProfile = await UserProfileModel.create({
+          ...setOnInsert,
+          ...nextSet,
+          ...(actorProfileId
+            ? {
+                createdBy: actorProfileId,
+                lastUpdatedBy: actorProfileId,
+              }
+            : {}),
+        });
+
+        profile = await UserProfileModel.findById(createdProfile._id)
+          .populate("joinedCommunities", "name")
+          .lean();
+      } catch (error) {
+        if (!isDuplicateKeyError(error as { code?: number } | Error | null | undefined)) {
+          throw error;
+        }
+
+        existingProfile = await UserProfileModel.findOne(
+          { email: auth.email },
+          { _id: 1, __v: 1 },
+        ).lean();
+
+        if (!existingProfile?._id) {
+          return NextResponse.json(
+            { error: "Conflict: profile was created concurrently.", requestId },
+            {
+              status: 409,
+              headers: {
+                "x-request-id": requestId,
+              },
+            },
+          );
+        }
+
+        const retryResult = await UserProfileModel.updateOne(
+          {
+            _id: existingProfile._id,
+            ...getVersionFilter(
+              typeof existingProfile.__v === "number" ? existingProfile.__v : undefined,
+            ),
+          },
+          {
+            $set: nextSet,
+            $inc: { __v: 1 },
+          },
+        );
+
+        if (retryResult.matchedCount === 0) {
+          return NextResponse.json(
+            { error: "Conflict: profile was modified by another request.", requestId },
+            {
+              status: 409,
+              headers: {
+                "x-request-id": requestId,
+              },
+            },
+          );
+        }
+
+        profile = await UserProfileModel.findById(existingProfile._id)
+          .populate("joinedCommunities", "name")
+          .lean();
+      }
     }
 
     if (profile && Array.isArray(profile.joinedCommunities) && profile.joinedCommunities.length > 0) {

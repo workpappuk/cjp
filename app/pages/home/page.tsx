@@ -16,11 +16,13 @@ import {
 import { Button, Card, CardBody, Chip, Input, Spinner, Typography } from "@/app/_types/mtw";
 import { useTheme } from "@/app/_context/theme-context";
 import AppNavbar from "@/app/_components/AppNavbar";
+import AppToast, { type AppToastTone } from "@/app/_components/AppToast";
 import PostComposer from "@/app/_components/PostComposer";
 import TagsPicker from "@/app/_components/TagsPicker";
 import { isAuthenticated } from "@/app/_utils/auth";
 import { getThemeColorTokens } from "@/app/_utils/theme-colors";
 import { attachTagsToTarget, dedupeTagNames } from "@/app/_utils/tags";
+import { updateJoinedCommunitiesWithConflictRetry } from "@/app/_utils/api";
 
 const HOME_UI_PREFS_KEY = "threadforge-home-ui-prefs";
 
@@ -68,18 +70,24 @@ export default function HomePage() {
   const [isMobileLeftModalOpen, setIsMobileLeftModalOpen] = useState(false);
   const [isMobileRightModalOpen, setIsMobileRightModalOpen] = useState(false);
   const [activeComposer, setActiveComposer] = useState<"post" | "community">("post");
-  const [submissionNotice, setSubmissionNotice] = useState("");
   const [isHydrating, setIsHydrating] = useState(true);
+  const [toast, setToast] = useState<{ open: boolean; message: string; tone: AppToastTone }>({
+    open: false,
+    message: "",
+    tone: "info",
+  });
   const discoverListRef = useRef<HTMLDivElement | null>(null);
   const feedListRef = useRef<HTMLDivElement | null>(null);
 
+  const showToast = (message: string, tone: AppToastTone = "info") => {
+    setToast({ open: true, message, tone });
+  };
+
   const persistJoinedCommunities = async (nextJoined: string[]) => {
-    await fetch("/api/user-profile", {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ joinedCommunities: nextJoined }),
+    return updateJoinedCommunitiesWithConflictRetry({
+      nextJoinedCommunities: nextJoined,
+      retries: 1,
+      mergeOnConflict: (latest, intended) => [...latest, ...intended],
     });
   };
 
@@ -418,7 +426,6 @@ export default function HomePage() {
   const handleCreateCommunity = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (communityDisabled) return;
-    setSubmissionNotice("");
 
     const nextName = normalizedCommunityName;
     const exists = communities.some(
@@ -452,16 +459,20 @@ export default function HomePage() {
       lastUpdatedBy?: string;
     };
 
-    await attachTagsToTarget({
+    const tagAttach = await attachTagsToTarget({
       targetType: "Community",
       targetId: created.id,
       tags: communityTags,
     });
 
+    if (tagAttach.didRetry) {
+      showToast("Community tags were retried after a concurrent change.", "warning");
+    }
+
     if (created.moderationStatus === "pending") {
       setCommunityName("");
       setCommunityTags([]);
-      setSubmissionNotice("Community submitted for admin approval.");
+      showToast("Community submitted for admin approval.", "info");
       return;
     }
 
@@ -479,7 +490,12 @@ export default function HomePage() {
     if (!alreadyJoined) {
       const nextJoined = [...joinedCommunities, nextName];
       setJoinedCommunities(nextJoined);
-      await persistJoinedCommunities(nextJoined);
+      const joinResult = await persistJoinedCommunities(nextJoined);
+      if (!joinResult.response.ok) {
+        showToast("Community created, but auto-join failed. Retry joining.", "warning");
+      } else if (joinResult.didRetry) {
+        showToast("Community join saved after resolving a concurrent update.", "success");
+      }
     }
 
     setCommunityName("");
@@ -496,13 +512,21 @@ export default function HomePage() {
     const nextJoined = [...joinedCommunities, normalizedName];
 
     setJoinedCommunities(nextJoined);
-    await persistJoinedCommunities(nextJoined);
+    const result = await persistJoinedCommunities(nextJoined);
+
+    if (!result.response.ok) {
+      showToast("Failed to join community. Please retry.", "error");
+      return;
+    }
+
+    if (result.didRetry) {
+      showToast("Join saved after resolving a concurrent update.", "success");
+    }
   };
 
   const handleCreatePost = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (postDisabled) return;
-    setSubmissionNotice("");
 
     const targetCommunities = selectedPostCommunities.map((community) => community.trim()).filter(Boolean);
     if (targetCommunities.length === 0) {
@@ -535,17 +559,21 @@ export default function HomePage() {
       createdAt: string;
     };
 
-    await attachTagsToTarget({
+    const tagAttach = await attachTagsToTarget({
       targetType: "Post",
       targetId: created.id,
       tags: postTags,
     });
 
+    if (tagAttach.didRetry) {
+      showToast("Post tags were retried after a concurrent change.", "warning");
+    }
+
     if (created.moderationStatus === "pending") {
       setTitle("");
       setContent("");
       setPostTags([]);
-      setSubmissionNotice("Post submitted for admin approval.");
+      showToast("Post submitted for admin approval.", "info");
       return;
     }
 
@@ -971,15 +999,7 @@ export default function HomePage() {
         )}
       />
 
-      {submissionNotice ? (
-        <div className="mx-auto w-full max-w-7xl px-6 pt-4 sm:px-10 lg:px-16">
-          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-200">
-            {submissionNotice}
-          </div>
-        </div>
-      ) : null}
-
-      <div className="mx-auto w-full max-w-7xl px-6 py-8 sm:px-10 lg:px-16">
+      <div className="mx-auto w-full max-w-none px-6 py-8 sm:px-10 lg:px-16">
         <div className="mb-4 flex gap-2 lg:hidden">
           {isLeftSidebarOpen ? (
             <Button
@@ -1216,6 +1236,12 @@ export default function HomePage() {
           </div>
         </div>
       ) : null}
+      <AppToast
+        open={toast.open}
+        message={toast.message}
+        tone={toast.tone}
+        onClose={() => setToast((prev) => ({ ...prev, open: false }))}
+      />
     </main>
   );
 }

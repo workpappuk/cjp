@@ -129,7 +129,7 @@ export default function MarketingPage() {
       <div className={`pointer-events-none absolute bottom-0 right-0 h-96 w-96 translate-x-1/4 translate-y-1/4 rounded-full blur-3xl ${activeTheme.blobB}`} />
 
       <nav className="sticky top-0 z-20 border-b border-slate-200/70 bg-white/80 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-3 sm:px-10 lg:px-16">
+        <div className="mx-auto flex w-full max-w-none items-center justify-between px-6 py-3 sm:px-10 lg:px-16">
           <div className={`flex items-center gap-2 ${activeTheme.headingText}`}>
             <HiGlobeAlt className="h-5 w-5" />
             <Typography variant="paragraph" className={`text-base font-semibold ${activeTheme.headingText}`}>
@@ -155,7 +155,7 @@ export default function MarketingPage() {
         </div>
       </nav>
 
-      <section className="relative z-10 mx-auto flex min-h-[calc(100vh-68px)] w-full max-w-6xl items-center px-6 py-12 sm:px-10 lg:px-16">
+      <section className="relative z-10 mx-auto flex min-h-[calc(100vh-68px)] w-full max-w-none items-center px-6 py-12 sm:px-10 lg:px-16">
         <div className="grid w-full gap-8 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] lg:gap-10">
           <Card className="rounded-3xl border border-slate-200/80 bg-white/90 shadow-xl shadow-slate-200/70">
             <CardBody className="p-6 sm:p-8">

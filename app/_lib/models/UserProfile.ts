@@ -67,7 +67,8 @@ const userProfileSchema = new Schema(
   },
   {
     timestamps: true,
-    versionKey: false,
+    versionKey: "__v",
+    optimisticConcurrency: true,
   },
 );
 
@@ -80,7 +81,8 @@ export type UserProfileDocument = InferSchemaType<typeof userProfileSchema>;
 
 if (
   models.UserProfile &&
-  (!models.UserProfile.schema.path("isAdmin") ||
+  (!models.UserProfile.schema.path("__v") ||
+    !models.UserProfile.schema.path("isAdmin") ||
     !models.UserProfile.schema.path("recordStatus"))
 ) {
   delete models.UserProfile;

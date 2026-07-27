@@ -38,16 +38,13 @@ This repo includes Playwright with a basic smoke test.
 Files:
 
 - `playwright.config.ts`
-- `tests/smoke.spec.ts`
+- `tests/e2e/smoke.spec.ts`
 
 Commands:
 
 ```bash
 npx playwright install chromium
 npm run test:e2e
-npm run test:e2e:ui
-npm run test:e2e:debug
-npm run test:e2e:report
 ```
 
 If browser download fails with a TLS/certificate error in a corporate network, configure your Node trust store and retry:
@@ -56,6 +53,102 @@ If browser download fails with a TLS/certificate error in a corporate network, c
 export NODE_EXTRA_CA_CERTS=/absolute/path/to/corporate-root-ca.pem
 npx playwright install chromium
 ```
+
+## Integration Testing Framework
+
+This repository now includes a production-grade integration testing stack for App Router:
+
+- Vitest
+- React Testing Library
+- MSW
+- MongoDB Memory Server (replica set)
+- Playwright (Page Object Model)
+
+### Test Structure
+
+```
+tests/
+  integration/
+    actions/
+    api/
+    auth/
+    components/
+    database/
+    middleware/
+  e2e/
+    pages/
+  fixtures/
+  mocks/
+  setup/
+  utils/
+```
+
+### Vitest Configuration
+
+- File: `vitest.config.ts`
+- Environment: `jsdom`
+- Coverage target: `>= 90%` on key integration modules
+- Deterministic execution: single worker for DB-backed suites
+
+### Test Database Lifecycle
+
+File: `tests/setup/setupDb.ts`
+
+Helpers:
+
+- `createTestDatabase()`
+- `resetDatabase()`
+- `seedDatabase()`
+- `cleanupDatabase()`
+
+### MSW
+
+Files:
+
+- `tests/mocks/handlers.ts`
+- `tests/mocks/server.ts`
+- `tests/mocks/browser.ts`
+
+### E2E Page Objects
+
+Files:
+
+- `tests/e2e/pages/LoginPage.ts`
+- `tests/e2e/pages/DashboardPage.ts`
+- `tests/e2e/pages/NavigationPage.ts`
+
+## Test Commands
+
+```bash
+npm test
+npm run test:watch
+npm run test:unit
+npm run test:integration
+npm run test:coverage
+npm run test:ui
+npm run test:e2e
+```
+
+## CI/CD
+
+GitHub Actions workflow:
+
+- `.github/workflows/tests.yml`
+
+The workflow:
+
+- installs dependencies
+- executes coverage tests
+- executes Playwright tests
+- uploads coverage and Playwright reports as artifacts
+
+## Testing Principles Used
+
+- Arrange/Act/Assert test structure
+- deterministic API and external service behavior
+- automatic cleanup for db and mocks
+- reusable fixtures and helpers
+- minimal mocking of business logic
 
 ## Auth Notes
 

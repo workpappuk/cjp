@@ -123,6 +123,14 @@ function toObjectIdStrings(values: Array<string | Types.ObjectId | null | undefi
   return [...ids];
 }
 
+function getVersionFilter(version: number | undefined) {
+  if (typeof version === "number") {
+    return { __v: version };
+  }
+
+  return { __v: { $exists: false } };
+}
+
 async function getSummaryCounts() {
   const [pendingPosts, pendingCommunities, pendingComments] = await Promise.all([
     PostModel.countDocuments({ moderationStatus: "pending" }),
@@ -374,18 +382,41 @@ export async function PATCH(request: Request) {
         ? CommunityModel
         : CommentModel;
 
-  const updated = await model.findByIdAndUpdate(
-    targetId,
+  const existing = await model.findById(targetId, { _id: 1, __v: 1 }).lean();
+
+  if (!existing) {
+    return NextResponse.json({ error: "Target not found." }, { status: 404 });
+  }
+
+  const updateResult = await model.updateOne(
+    {
+      _id: targetId,
+      ...getVersionFilter(typeof existing.__v === "number" ? existing.__v : undefined),
+    },
     {
       $set: {
         ...updateSet,
       },
-    },
-    {
-      returnDocument: "after",
-      lean: true,
+      $inc: {
+        __v: 1,
+      },
     },
   );
+
+  if (updateResult.matchedCount === 0) {
+    return NextResponse.json(
+      { error: "Conflict: target was modified by another request." },
+      { status: 409 },
+    );
+  }
+
+  const updated = await model.findById(targetId, {
+    _id: 1,
+    moderationStatus: 1,
+    recordStatus: 1,
+    approvedAt: 1,
+    __v: 1,
+  }).lean();
 
   if (!updated) {
     return NextResponse.json({ error: "Target not found." }, { status: 404 });
@@ -397,5 +428,6 @@ export async function PATCH(request: Request) {
     moderationStatus: updated.moderationStatus,
     recordStatus: updated.recordStatus,
     approvedAt: updated.approvedAt,
+    version: updated.__v ?? null,
   });
 }

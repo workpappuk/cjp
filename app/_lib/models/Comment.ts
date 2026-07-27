@@ -62,7 +62,8 @@ const commentSchema = new Schema(
   },
   {
     timestamps: true,
-    versionKey: false,
+    versionKey: "__v",
+    optimisticConcurrency: true,
   },
 );
 
@@ -75,7 +76,8 @@ export type CommentDocument = InferSchemaType<typeof commentSchema>;
 
 if (
   models.Comment &&
-  (!models.Comment.schema.path("moderationStatus") ||
+  (!models.Comment.schema.path("__v") ||
+    !models.Comment.schema.path("moderationStatus") ||
     !models.Comment.schema.path("recordStatus"))
 ) {
   delete models.Comment;

@@ -45,7 +45,8 @@ const tagSchema = new Schema(
   },
   {
     timestamps: true,
-    versionKey: false,
+    versionKey: "__v",
+    optimisticConcurrency: true,
   },
 );
 
@@ -63,7 +64,10 @@ tagSchema.plugin(applyModelDeltaAuditPlugin, { source: "tags" });
 
 export type TagDocument = InferSchemaType<typeof tagSchema>;
 
-if (models.Tag && !models.Tag.schema.path("recordStatus")) {
+if (
+  models.Tag &&
+  (!models.Tag.schema.path("__v") || !models.Tag.schema.path("recordStatus"))
+) {
   delete models.Tag;
 }
 

@@ -60,7 +60,8 @@ const postSchema = new Schema(
   },
   {
     timestamps: true,
-    versionKey: false,
+    versionKey: "__v",
+    optimisticConcurrency: true,
   },
 );
 
@@ -77,6 +78,7 @@ export type PostDocument = InferSchemaType<typeof postSchema>;
 if (
   models.Post &&
   (!models.Post.schema.path("tags") ||
+    !models.Post.schema.path("__v") ||
     !models.Post.schema.path("moderationStatus") ||
     !models.Post.schema.path("recordStatus"))
 ) {
