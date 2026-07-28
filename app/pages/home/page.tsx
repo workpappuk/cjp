@@ -17,7 +17,6 @@ import { Button, Card, CardBody, Chip, Input, Spinner, Typography } from "@/app/
 import { useTheme } from "@/app/_context/theme-context";
 import AppNavbar from "@/app/_components/AppNavbar";
 import AppToast, { type AppToastTone } from "@/app/_components/AppToast";
-import PostComposer from "@/app/_components/PostComposer";
 import TagsPicker from "@/app/_components/TagsPicker";
 import { isAuthenticated } from "@/app/_utils/auth";
 import { getThemeColorTokens } from "@/app/_utils/theme-colors";
@@ -49,9 +48,6 @@ export default function HomePage() {
   const router = useRouter();
   const { status } = useSession();
   const { theme } = useTheme();
-  const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
-  const [postTags, setPostTags] = useState<string[]>([]);
   const [posts, setPosts] = useState<PostItem[]>([]);
   const [communityName, setCommunityName] = useState("");
   const [communityTags, setCommunityTags] = useState<string[]>([]);
@@ -59,17 +55,11 @@ export default function HomePage() {
   const [communityTagsByName, setCommunityTagsByName] = useState<Record<string, string[]>>({});
   const [availableTags, setAvailableTags] = useState<string[]>([]);
   const [joinedCommunities, setJoinedCommunities] = useState<string[]>([]);
-  const [selectedPostCommunities, setSelectedPostCommunities] = useState<string[]>([]);
-  const [postCommunitySearch, setPostCommunitySearch] = useState("");
-  const [debouncedPostCommunitySearch, setDebouncedPostCommunitySearch] = useState("");
-  const [apiPostCommunityOptions, setApiPostCommunityOptions] = useState<string[]>([]);
-  const [isLoadingPostCommunityOptions, setIsLoadingPostCommunityOptions] = useState(false);
   const [communitySearch, setCommunitySearch] = useState("");
   const [isLeftSidebarOpen, setIsLeftSidebarOpen] = useState(true);
   const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(true);
   const [isMobileLeftModalOpen, setIsMobileLeftModalOpen] = useState(false);
   const [isMobileRightModalOpen, setIsMobileRightModalOpen] = useState(false);
-  const [activeComposer, setActiveComposer] = useState<"post" | "community">("post");
   const [isHydrating, setIsHydrating] = useState(true);
   const [toast, setToast] = useState<{ open: boolean; message: string; tone: AppToastTone }>({
     open: false,
@@ -92,12 +82,6 @@ export default function HomePage() {
   };
 
   const { buttonColor, toggle: toggleColors, accent: accentClasses } = getThemeColorTokens(theme);
-  const basePostDisabled =
-    title.trim().length === 0 ||
-    content.trim().length === 0;
-  const hasJoinedCommunity = joinedCommunities.length > 0;
-  const postDisabled = basePostDisabled || selectedPostCommunities.length === 0;
-
   const communityDisabled = communityName.trim().length < 3;
   const normalizedCommunityName = communityName.trim().toLowerCase();
 
@@ -153,14 +137,6 @@ export default function HomePage() {
     );
   }, [availableCommunities, normalizedCommunitySearch]);
 
-  const filteredPostDestinationOptions = useMemo(() => {
-    const trimmedSearch = debouncedPostCommunitySearch.trim().toLowerCase();
-    const source = trimmedSearch ? apiPostCommunityOptions : joinedCommunities;
-    const uniqueSource = [...new Set(source.map((item) => item.trim().toLowerCase()).filter(Boolean))];
-
-    return uniqueSource.filter((community) => joinedCommunitiesSet.has(community));
-  }, [apiPostCommunityOptions, debouncedPostCommunitySearch, joinedCommunities, joinedCommunitiesSet]);
-
   const discoverVirtualizer = useVirtualizer({
     count: filteredAvailableCommunities.length,
     getScrollElement: () => discoverListRef.current,
@@ -184,71 +160,6 @@ export default function HomePage() {
   useEffect(() => {
     feedVirtualizer.scrollToOffset(0);
   }, [joinedCommunities.length, feedVirtualizer]);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedPostCommunitySearch(postCommunitySearch.trim());
-    }, 250);
-
-    return () => clearTimeout(timer);
-  }, [postCommunitySearch]);
-
-  useEffect(() => {
-    setSelectedPostCommunities((prev) => {
-      const joinedSet = new Set(joinedCommunities);
-      const filtered = prev.filter((community) => joinedSet.has(community));
-      return filtered.length > 0 ? filtered : [...joinedCommunities];
-    });
-  }, [joinedCommunities]);
-
-  useEffect(() => {
-    if (!debouncedPostCommunitySearch) {
-      setApiPostCommunityOptions([]);
-      setIsLoadingPostCommunityOptions(false);
-      return;
-    }
-
-    const controller = new AbortController();
-
-    const fetchCommunities = async () => {
-      setIsLoadingPostCommunityOptions(true);
-
-      try {
-        const response = await fetch(
-          `/api/communities?search=${encodeURIComponent(debouncedPostCommunitySearch)}`,
-          {
-            cache: "no-store",
-            signal: controller.signal,
-          },
-        );
-
-        if (!response.ok) {
-          return;
-        }
-
-        const payload = (await response.json()) as Array<{ name?: string }>;
-        const names = Array.isArray(payload)
-          ? payload
-              .map((item) => item.name?.trim().toLowerCase() ?? "")
-              .filter(Boolean)
-          : [];
-
-        setApiPostCommunityOptions([...new Set(names)]);
-      } catch (error) {
-        if (error instanceof DOMException && error.name === "AbortError") {
-          return;
-        }
-      } finally {
-        setIsLoadingPostCommunityOptions(false);
-      }
-    };
-
-    void fetchCommunities();
-
-    return () => {
-      controller.abort();
-    };
-  }, [debouncedPostCommunitySearch]);
 
   useEffect(() => {
     const shouldLockBodyScroll = isMobileLeftModalOpen || isMobileRightModalOpen;
@@ -389,16 +300,9 @@ export default function HomePage() {
           if (typeof parsedUiPrefs.right === "boolean") {
             setIsRightSidebarOpen(parsedUiPrefs.right);
           }
-          if (
-            parsedUiPrefs.activeComposer === "post" ||
-            parsedUiPrefs.activeComposer === "community"
-          ) {
-            setActiveComposer(parsedUiPrefs.activeComposer);
-          }
         } catch {
           setIsLeftSidebarOpen(true);
           setIsRightSidebarOpen(true);
-          setActiveComposer("post");
         }
       }
     };
@@ -418,10 +322,9 @@ export default function HomePage() {
       JSON.stringify({
         left: isLeftSidebarOpen,
         right: isRightSidebarOpen,
-        activeComposer,
       }),
     );
-  }, [isLeftSidebarOpen, isRightSidebarOpen, activeComposer]);
+  }, [isLeftSidebarOpen, isRightSidebarOpen]);
 
   const handleCreateCommunity = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -522,86 +425,6 @@ export default function HomePage() {
     if (result.didRetry) {
       showToast("Join saved after resolving a concurrent update.", "success");
     }
-  };
-
-  const handleCreatePost = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (postDisabled) return;
-
-    const targetCommunities = selectedPostCommunities.map((community) => community.trim()).filter(Boolean);
-    if (targetCommunities.length === 0) {
-      return;
-    }
-
-    const response = await fetch("/api/posts", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        title: title.trim(),
-        content: content.trim(),
-        communities: targetCommunities,
-      }),
-    });
-
-    if (!response.ok) {
-      return;
-    }
-
-    const created = (await response.json()) as {
-      id: string;
-      title: string;
-      content: string;
-      communities?: string[];
-      tags?: string[];
-      moderationStatus?: string;
-      createdAt: string;
-    };
-
-    const tagAttach = await attachTagsToTarget({
-      targetType: "Post",
-      targetId: created.id,
-      tags: postTags,
-    });
-
-    if (tagAttach.didRetry) {
-      showToast("Post tags were retried after a concurrent change.", "warning");
-    }
-
-    if (created.moderationStatus === "pending") {
-      setTitle("");
-      setContent("");
-      setPostTags([]);
-      showToast("Post submitted for admin approval.", "info");
-      return;
-    }
-
-    const newPost = {
-      id: created.id,
-      title: created.title,
-      content: created.content,
-      communities: created.communities,
-      tags: dedupeTagNames(postTags.length > 0 ? postTags : created.tags ?? []),
-      createdAt: formatDisplayDate(created.createdAt),
-    };
-
-    const nextPosts = [newPost, ...posts];
-    setPosts(nextPosts);
-    setTitle("");
-    setContent("");
-    setAvailableTags((prev) => dedupeTagNames([...prev, ...postTags]));
-    setPostTags([]);
-  };
-
-  const handleTogglePostCommunity = (communityName: string) => {
-    setSelectedPostCommunities((prev) => {
-      if (prev.includes(communityName)) {
-        return prev.filter((item) => item !== communityName);
-      }
-
-      return [...prev, communityName];
-    });
   };
 
   const leftSidebarContent = (
@@ -715,207 +538,72 @@ export default function HomePage() {
   const rightSidebarContent = (
     <>
       <Card className={`border shadow-none dark:bg-slate-900 ${accentClasses.sectionBorder}`}>
-        <CardBody className="space-y-3 p-5">
+        <CardBody className="space-y-4 p-5">
           <Typography variant="h5" className={accentClasses.heading}>
             Create
           </Typography>
-
-          <div className="flex gap-2">
-            <Button
-              color={buttonColor}
-              variant={activeComposer === "post" ? "filled" : "outlined"}
-              className="flex-1 rounded-lg"
-              onClick={() => setActiveComposer("post")}
-            >
-              Post
+          <Typography variant="small" className="text-slate-700 dark:text-slate-300">
+            Home supports community creation. Use the dedicated post creator page to publish posts.
+          </Typography>
+          <Link href="/pages/post/create" className="inline-flex w-full items-center justify-center gap-2">
+            <Button color={buttonColor} className="w-full rounded-lg">
+              Go To Post Creator
             </Button>
-            <Button
-              color={buttonColor}
-              variant={activeComposer === "community" ? "filled" : "outlined"}
-              className="flex-1 rounded-lg"
-              onClick={() => setActiveComposer("community")}
-            >
-              Community
-            </Button>
-          </div>
+          </Link>
         </CardBody>
       </Card>
 
-      {activeComposer === "community" ? (
-        <Card className={`border shadow-none dark:bg-slate-900 ${accentClasses.sectionBorder}`}>
-          <CardBody className="space-y-4 p-5">
-            <Typography variant="h5" className={`inline-flex items-center gap-2 ${accentClasses.heading}`}>
-              <HiFolderPlus className="h-5 w-5" />
-              Create Community
-            </Typography>
+      <Card className={`border shadow-none dark:bg-slate-900 ${accentClasses.sectionBorder}`}>
+        <CardBody className="space-y-4 p-5">
+          <Typography variant="h5" className={`inline-flex items-center gap-2 ${accentClasses.heading}`}>
+            <HiFolderPlus className="h-5 w-5" />
+            Create Community
+          </Typography>
 
-            <form className="flex flex-col gap-3" onSubmit={handleCreateCommunity}>
-              <Input
-                          variant="standard"
+          <form className="flex flex-col gap-3" onSubmit={handleCreateCommunity}>
+            <Input
+                        variant="standard"
 
-                label="Community name"
-                value={communityName}
-                onChange={(event: ChangeEvent<HTMLInputElement>) =>
-                  setCommunityName(event.target.value)
-                }
-                crossOrigin={undefined}
-                color={buttonColor}
-              />
-              <TagsPicker
-                label="Community tags"
-                value={communityTags}
-                onChange={setCommunityTags}
-                suggestedTags={availableTags}
-                disabled={communityDisabled}
-                color={buttonColor}
-                helperText="Optional. Helps people discover this community."
-              />
-              <Button color={buttonColor} type="submit" disabled={communityDisabled}>
-                Add Community
-              </Button>
-            </form>
-
-            {communities.length > 0 ? (
-              <div className="flex flex-wrap gap-2">
-                {communities.map((item) => (
-                  <span
-                    key={item}
-                    className="rounded-full border border-slate-300 bg-slate-50 px-3 py-1 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                  >
-                    {item}
-                  </span>
-                ))}
-              </div>
-            ) : (
-              <Typography variant="small" className="text-slate-700 dark:text-slate-300">
-                No custom communities yet.
-              </Typography>
-            )}
-          </CardBody>
-        </Card>
-      ) : (
-        <Card className={`border shadow-none dark:bg-slate-900 ${accentClasses.sectionBorder}`}>
-          <CardBody className="space-y-4 p-5">
-            <div className="space-y-2">
-              <Typography variant="small" className="text-slate-700 dark:text-slate-300">
-                Post destinations
-              </Typography>
-              {hasJoinedCommunity ? (
-                <>
-                  <details className="group relative">
-                    <summary className="flex h-10 cursor-pointer items-center justify-between rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
-                      <span>
-                        {selectedPostCommunities.length > 0
-                          ? `${selectedPostCommunities.length} selected`
-                          : "Select communities"}
-                      </span>
-                      <span className="text-xs text-slate-500 dark:text-slate-400">Toggle</span>
-                    </summary>
-
-                    <div className="absolute z-20 mt-2 max-h-56 w-full overflow-y-auto rounded-lg border border-slate-300 bg-white p-2 shadow-lg dark:border-slate-700 dark:bg-slate-900">
-                      <div className="mb-2 border-b border-slate-200 pb-2 dark:border-slate-700">
-                        <input
-                          type="text"
-                          value={postCommunitySearch}
-                          onChange={(event: ChangeEvent<HTMLInputElement>) =>
-                            setPostCommunitySearch(event.target.value)
-                          }
-                          placeholder="Search joined communities"
-                          className="h-9 w-full rounded-md border border-slate-300 bg-white px-2 text-sm text-slate-700 outline-none focus:border-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:placeholder:text-slate-400"
-                        />
-                      </div>
-
-                      {isLoadingPostCommunityOptions ? (
-                        <div className="flex items-center gap-2 px-2 py-2 text-xs text-slate-600 dark:text-slate-300">
-                          <Spinner className="h-4 w-4" />
-                          Searching communities...
-                        </div>
-                      ) : null}
-
-                      {filteredPostDestinationOptions.map((community) => {
-                        const isSelected = selectedPostCommunities.includes(community);
-
-                        return (
-                          <label
-                            key={`post-target-${community}`}
-                            className="flex cursor-pointer items-center justify-between rounded-md px-2 py-1.5 text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
-                          >
-                            <span className="truncate pr-3">{community}</span>
-                            <input
-                              type="checkbox"
-                              checked={isSelected}
-                              onChange={() => handleTogglePostCommunity(community)}
-                              className="h-4 w-4 accent-slate-700 dark:accent-slate-200"
-                            />
-                          </label>
-                        );
-                      })}
-
-                      {!isLoadingPostCommunityOptions && filteredPostDestinationOptions.length === 0 ? (
-                        <Typography variant="small" className="px-2 py-1 text-slate-600 dark:text-slate-300">
-                          No joined communities match this search.
-                        </Typography>
-                      ) : null}
-                    </div>
-                  </details>
-
-                  <div className="flex flex-wrap gap-2 pt-1">
-                    {selectedPostCommunities.length > 0 ? (
-                      selectedPostCommunities.map((community) => (
-                        <Chip
-                          key={`selected-post-community-${community}`}
-                          value={community}
-                          size="sm"
-                          variant="ghost"
-                          color={buttonColor}
-                          className="rounded-full"
-                        />
-                      ))
-                    ) : (
-                      <Typography variant="small" className="text-slate-700 dark:text-slate-300">
-                        No community selected yet.
-                      </Typography>
-                    )}
-                  </div>
-                </>
-              ) : (
-                <Typography variant="small" className="text-slate-700 dark:text-slate-300">
-                  Join a community to choose where your post will be published.
-                </Typography>
-              )}
-            </div>
-
-            <PostComposer
-              heading="Create New Post"
-              title={title}
-              content={content}
-              onTitleChange={setTitle}
-              onContentChange={setContent}
-              onSubmit={handleCreatePost}
-              disabled={postDisabled}
-              buttonLabel="Publish Post"
-              helperText={
-                hasJoinedCommunity
-                  ? selectedPostCommunities.length > 0
-                    ? `This post will be submitted to ${selectedPostCommunities.length} ${selectedPostCommunities.length === 1 ? "community" : "communities"}. New posts are submitted for admin approval before they appear publicly.`
-                    : "Select at least one community for this post."
-                  : "Join at least one community before publishing a post."
+              label="Community name"
+              value={communityName}
+              onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                setCommunityName(event.target.value)
               }
+              crossOrigin={undefined}
               color={buttonColor}
-              extraSection={(
-                <TagsPicker
-                  label="Post tags"
-                  value={postTags}
-                  onChange={setPostTags}
-                  suggestedTags={availableTags}
-                  color={buttonColor}
-                  disabled={postDisabled}
-                />
-              )}
             />
-          </CardBody>
-        </Card>
-      )}
+            <TagsPicker
+              label="Community tags"
+              value={communityTags}
+              onChange={setCommunityTags}
+              suggestedTags={availableTags}
+              disabled={communityDisabled}
+              color={buttonColor}
+              helperText="Optional. Helps people discover this community."
+            />
+            <Button color={buttonColor} type="submit" disabled={communityDisabled}>
+              Add Community
+            </Button>
+          </form>
+
+          {communities.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {communities.map((item) => (
+                <span
+                  key={item}
+                  className="rounded-full border border-slate-300 bg-slate-50 px-3 py-1 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                >
+                  {item}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <Typography variant="small" className="text-slate-700 dark:text-slate-300">
+              No custom communities yet.
+            </Typography>
+          )}
+        </CardBody>
+      </Card>
     </>
   );
 
