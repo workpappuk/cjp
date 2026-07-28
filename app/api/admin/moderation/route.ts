@@ -5,6 +5,7 @@ import { getSessionActor } from "@/app/_lib/admin";
 import { PostModel } from "@/app/_lib/models/Post";
 import { CommunityModel } from "@/app/_lib/models/Community";
 import { CommentModel } from "@/app/_lib/models/Comment";
+import { sanitizeScopedUploadUrls } from "@/app/_lib/upload-url";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -248,6 +249,7 @@ async function listTargetItems({
       targetType: String(comment.targetType ?? ""),
       targetId: String(comment.targetId ?? ""),
       text: String(comment.text ?? ""),
+      imageUrls: sanitizeScopedUploadUrls(comment.imageUrls, "comment"),
       parentCommentId: comment.parentCommentId ? String(comment.parentCommentId) : null,
       moderationStatus: (comment.moderationStatus ?? "approved") as ModerationStatus,
       recordStatus: (comment.recordStatus ?? "active") as RecordStatus,

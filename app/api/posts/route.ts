@@ -7,6 +7,7 @@ import { CommunityModel } from "@/app/_lib/models/Community";
 import { TagModel } from "@/app/_lib/models/Tag";
 import { getSessionActor } from "@/app/_lib/admin";
 import { checkRateLimit } from "@/app/_lib/rate-limit";
+import { sanitizeScopedUploadUrls } from "@/app/_lib/upload-url";
 import {
   getApiErrorMessage,
   getOrCreateRequestId,
@@ -187,6 +188,7 @@ export async function GET(request: Request) {
         id: String(post._id),
         title: post.title,
         content: post.content,
+        imageUrls: sanitizeScopedUploadUrls(post.imageUrls, "post"),
         communities: resolveRefNames(
           post.communities as JoinedCommunityValue[] | undefined,
           communityNameById,
@@ -260,6 +262,7 @@ export async function POST(request: Request) {
       title?: string;
       content?: string;
       communities?: string[];
+      imageUrls?: string[];
     };
 
     const title = payload?.title?.trim() ?? "";
@@ -269,6 +272,7 @@ export async function POST(request: Request) {
           .map((item) => item.trim().toLowerCase())
           .filter(Boolean)
       : [];
+    const imageUrls = sanitizeScopedUploadUrls(payload?.imageUrls, "post");
     const communityIds = await resolveCommunityIds(communities);
 
     if (!title || !content) {
@@ -289,6 +293,7 @@ export async function POST(request: Request) {
     const created = await PostModel.create({
       title,
       content,
+      imageUrls,
       communities: communityIds,
       createdBy: actorProfileId,
       lastUpdatedBy: actorProfileId,
@@ -330,6 +335,7 @@ export async function POST(request: Request) {
         id: String(createdDoc?._id ?? created._id),
         title: createdDoc?.title ?? created.title,
         content: createdDoc?.content ?? created.content,
+        imageUrls: sanitizeScopedUploadUrls(createdDoc?.imageUrls ?? imageUrls, "post"),
         communities: resolveRefNames(
           (createdDoc?.communities as JoinedCommunityValue[] | undefined) ?? [],
           createdCommunityNameById,

@@ -4,6 +4,7 @@ import {
   Button as MaterialButton,
   Card as MaterialCard,
   CardBody as MaterialCardBody,
+  Carousel as MaterialCarousel,
   Chip as MaterialChip,
   IconButton as MaterialIconButton,
   Input as MaterialInput,
@@ -29,6 +30,7 @@ export const Alert = asElement(MaterialAlert);
 export const Button = asElement(MaterialButton);
 export const Card = asElement(MaterialCard);
 export const CardBody = asElement(MaterialCardBody);
+export const Carousel = asElement(MaterialCarousel);
 export const Chip = asElement(MaterialChip);
 export const IconButton = asElement(MaterialIconButton);
 export const Input = asElement(MaterialInput);

@@ -5,6 +5,7 @@ import { CommunityModel } from "@/app/_lib/models/Community";
 import { UserProfileModel } from "@/app/_lib/models/UserProfile";
 import { getSessionActor } from "@/app/_lib/admin";
 import { checkRateLimit } from "@/app/_lib/rate-limit";
+import { sanitizeScopedUploadUrl } from "@/app/_lib/upload-url";
 import {
   getApiErrorMessage,
   getOrCreateRequestId,
@@ -90,6 +91,8 @@ export async function GET(request: Request) {
         id: String(community._id),
         name: community.name,
         tags: toTagNames(community.tags as JoinedTagValue[]),
+        bannerImageUrl: sanitizeScopedUploadUrl(community.bannerImageUrl, "community"),
+        titleImageUrl: sanitizeScopedUploadUrl(community.titleImageUrl, "community"),
         createdBy: community.createdBy ? String(community.createdBy) : "",
         lastUpdatedBy: community.lastUpdatedBy ? String(community.lastUpdatedBy) : "",
         moderationStatus: community.moderationStatus ?? "approved",
@@ -199,6 +202,8 @@ export async function POST(request: Request) {
         requestId,
         id: String(created._id),
         name: created.name,
+        bannerImageUrl: sanitizeScopedUploadUrl(created.bannerImageUrl, "community"),
+        titleImageUrl: sanitizeScopedUploadUrl(created.titleImageUrl, "community"),
         createdBy: created.createdBy ? String(created.createdBy) : "",
         lastUpdatedBy: created.lastUpdatedBy ? String(created.lastUpdatedBy) : "",
         moderationStatus: created.moderationStatus ?? moderationStatus,

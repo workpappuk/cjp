@@ -2,6 +2,8 @@
 
 import type { ChangeEvent, FormEvent, ReactNode } from "react";
 import { Button, Input, Typography } from "@/app/_types/mtw";
+import ImageUploadField from "@/app/_components/ImageUploadField";
+import type { UploadScope } from "@/app/_types/uploads";
 
 type PostComposerProps = {
   heading?: string;
@@ -17,6 +19,11 @@ type PostComposerProps = {
   contentLabel?: string;
   contentPlaceholder?: string;
   contentRows?: number;
+  imageUrls?: string[];
+  onImageUrlsChange?: (next: string[]) => void;
+  imageUploadScope?: UploadScope;
+  imageUploadMax?: number;
+  imageUploadDisabled?: boolean;
   extraSection?: ReactNode;
 };
 
@@ -34,6 +41,11 @@ export default function PostComposer({
   contentLabel = "Post content",
   contentPlaceholder = "Share your thoughts with the community...",
   contentRows = 5,
+  imageUrls = [],
+  onImageUrlsChange,
+  imageUploadScope = "post",
+  imageUploadMax = 6,
+  imageUploadDisabled = false,
   extraSection,
 }: PostComposerProps) {
   return (
@@ -67,6 +79,18 @@ export default function PostComposer({
             onChange={(event: ChangeEvent<HTMLTextAreaElement>) => onContentChange(event.target.value)}
           />
         </div>
+
+        {onImageUrlsChange ? (
+          <ImageUploadField
+            value={imageUrls}
+            onChange={onImageUrlsChange}
+            scope={imageUploadScope}
+            maxImages={imageUploadMax}
+            color={color}
+            disabled={imageUploadDisabled}
+            label="Post images"
+          />
+        ) : null}
 
         {extraSection}
 

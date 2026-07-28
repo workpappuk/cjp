@@ -23,6 +23,10 @@ const commentSchema = new Schema(
       minlength: 1,
       maxlength: 5000,
     },
+    imageUrls: {
+      type: [String],
+      default: [],
+    },
     parentCommentId: {
       type: Schema.Types.ObjectId,
       ref: "Comment",
@@ -76,7 +80,8 @@ export type CommentDocument = InferSchemaType<typeof commentSchema>;
 
 if (
   models.Comment &&
-  (!models.Comment.schema.path("__v") ||
+  (!models.Comment.schema.path("imageUrls") ||
+    !models.Comment.schema.path("__v") ||
     !models.Comment.schema.path("moderationStatus") ||
     !models.Comment.schema.path("recordStatus"))
 ) {

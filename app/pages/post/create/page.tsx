@@ -37,6 +37,7 @@ export default function CreatePostPage() {
 
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+  const [postImageUrls, setPostImageUrls] = useState<string[]>([]);
   const [postTags, setPostTags] = useState<string[]>([]);
   const [availableTags, setAvailableTags] = useState<string[]>([]);
   const [joinedCommunities, setJoinedCommunities] = useState<string[]>([]);
@@ -366,6 +367,7 @@ export default function CreatePostPage() {
       body: JSON.stringify({
         title: title.trim(),
         content: content.trim(),
+        imageUrls: postImageUrls,
         communities: selectedCommunities,
       }),
     });
@@ -393,6 +395,7 @@ export default function CreatePostPage() {
     setAvailableTags((prev) => dedupeTagNames([...prev, ...postTags]));
     setTitle("");
     setContent("");
+    setPostImageUrls([]);
     setPostTags([]);
 
     if (created.moderationStatus === "pending") {
@@ -598,6 +601,10 @@ export default function CreatePostPage() {
               content={content}
               onTitleChange={setTitle}
               onContentChange={setContent}
+              imageUrls={postImageUrls}
+              onImageUrlsChange={setPostImageUrls}
+              imageUploadScope="post"
+              imageUploadDisabled={!hasAnyJoinedCommunity}
               onSubmit={handleCreatePost}
               disabled={postDisabled}
               buttonLabel="Publish Post"

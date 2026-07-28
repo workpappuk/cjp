@@ -27,6 +27,16 @@ const communitySchema = new Schema(
       type: [{ type: Schema.Types.ObjectId, ref: "Tag" }],
       default: [],
     },
+    bannerImageUrl: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    titleImageUrl: {
+      type: String,
+      default: "",
+      trim: true,
+    },
     moderationStatus: {
       type: String,
       enum: ["pending", "approved", "rejected"],
@@ -67,6 +77,8 @@ export type CommunityDocument = InferSchemaType<typeof communitySchema>;
 if (
   models.Community &&
   (!models.Community.schema.path("tags") ||
+    !models.Community.schema.path("bannerImageUrl") ||
+    !models.Community.schema.path("titleImageUrl") ||
     !models.Community.schema.path("__v") ||
     !models.Community.schema.path("moderationStatus") ||
     !models.Community.schema.path("recordStatus"))

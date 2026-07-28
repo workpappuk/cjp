@@ -6,9 +6,10 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Button, Card, CardBody, Chip, Input, Spinner, Typography } from "@/app/_types/mtw";
-import { HiArrowLeft, HiCheckCircle, HiUserPlus } from "react-icons/hi2";
+import { HiArrowLeft, HiCheckCircle, HiCog6Tooth, HiUserPlus } from "react-icons/hi2";
 import AppNavbar from "@/app/_components/AppNavbar";
 import AppToast, { type AppToastTone } from "@/app/_components/AppToast";
+import PostImageCarousel from "@/app/_components/PostImageCarousel";
 import PostComposer from "@/app/_components/PostComposer";
 import TagsPicker from "@/app/_components/TagsPicker";
 import { useTheme } from "@/app/_context/theme-context";
@@ -24,13 +25,23 @@ type PostItem = {
   id: string | number;
   title: string;
   content: string;
+  imageUrls?: string[];
   communities?: string[];
   tags?: string[];
   createdAt: string;
 };
 
 type UserProfileResponse = {
+  id?: string;
   joinedCommunities?: string[];
+};
+
+type CommunityResponse = {
+  name?: string;
+  tags?: string[];
+  createdBy?: string;
+  bannerImageUrl?: string;
+  titleImageUrl?: string;
 };
 
 function formatDisplayDate(input: string | Date) {
@@ -47,9 +58,14 @@ export default function CommunityPage() {
   const [posts, setPosts] = useState<PostItem[]>([]);
   const [postTitle, setPostTitle] = useState("");
   const [postContent, setPostContent] = useState("");
+  const [postImageUrls, setPostImageUrls] = useState<string[]>([]);
   const [postTags, setPostTags] = useState<string[]>([]);
   const [availableTags, setAvailableTags] = useState<string[]>([]);
   const [communityTags, setCommunityTags] = useState<string[]>([]);
+  const [communityOwnerId, setCommunityOwnerId] = useState("");
+  const [communityBannerImageUrl, setCommunityBannerImageUrl] = useState("");
+  const [communityTitleImageUrl, setCommunityTitleImageUrl] = useState("");
+  const [profileId, setProfileId] = useState("");
   const [joinedCommunities, setJoinedCommunities] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [visibleCount, setVisibleCount] = useState(INITIAL_FEED_RENDER_COUNT);
@@ -109,13 +125,15 @@ export default function CommunityPage() {
 
     const hydrateFromApi = async () => {
       try {
-        const [postsRes, tagsRes, profileRes, communitiesRes] = await Promise.all([
+        const [postsRes, tagsRes, profileRes, communityRes] = await Promise.all([
           fetch(`/api/posts?community=${encodeURIComponent(communityName.toLowerCase())}`, {
             cache: "no-store",
           }),
           fetch("/api/tags", { cache: "no-store" }),
           fetch("/api/user-profile", { cache: "no-store" }),
-          fetch("/api/communities", { cache: "no-store" }),
+          fetch(`/api/communities/${encodeURIComponent(communityName.toLowerCase())}`, {
+            cache: "no-store",
+          }),
         ]);
 
         if (!isMounted) {
@@ -127,6 +145,7 @@ export default function CommunityPage() {
             id: string;
             title: string;
             content: string;
+            imageUrls?: string[];
             communities?: string[];
             tags?: string[];
             createdAt: string;
@@ -138,6 +157,7 @@ export default function CommunityPage() {
                   id: post.id,
                   title: post.title,
                   content: post.content,
+                  imageUrls: Array.isArray(post.imageUrls) ? post.imageUrls : [],
                   communities: post.communities,
                   tags: post.tags,
                   createdAt: formatDisplayDate(post.createdAt),
@@ -146,27 +166,21 @@ export default function CommunityPage() {
           );
         }
 
-        if (communitiesRes.ok) {
-          const parsedCommunities = (await communitiesRes.json()) as Array<{
-            name: string;
-            tags?: string[];
-          }>;
-
-          const matchedCommunity = Array.isArray(parsedCommunities)
-            ? parsedCommunities.find(
-                (item) => item.name.trim().toLowerCase() === communityName.trim().toLowerCase(),
-              )
-            : undefined;
-
+        if (communityRes.ok) {
+          const community = (await communityRes.json()) as CommunityResponse;
           setCommunityTags(
-            matchedCommunity?.tags && Array.isArray(matchedCommunity.tags)
-              ? dedupeTagNames(matchedCommunity.tags)
+            Array.isArray(community.tags)
+              ? dedupeTagNames(community.tags)
               : [],
           );
+          setCommunityOwnerId(community.createdBy?.trim() ?? "");
+          setCommunityBannerImageUrl(community.bannerImageUrl?.trim() ?? "");
+          setCommunityTitleImageUrl(community.titleImageUrl?.trim() ?? "");
         }
 
         if (profileRes.ok) {
           const profile = (await profileRes.json()) as UserProfileResponse;
+          setProfileId(profile.id?.trim() ?? "");
           setJoinedCommunities(
             Array.isArray(profile.joinedCommunities)
               ? profile.joinedCommunities
@@ -194,6 +208,10 @@ export default function CommunityPage() {
         setPosts([]);
         setAvailableTags([]);
         setCommunityTags([]);
+        setCommunityOwnerId("");
+        setCommunityBannerImageUrl("");
+        setCommunityTitleImageUrl("");
+        setProfileId("");
         setJoinedCommunities([]);
       } finally {
         if (!isMounted) {
@@ -221,6 +239,7 @@ export default function CommunityPage() {
 
   const totalCount = authoredPosts.length;
   const isJoined = joinedCommunities.includes(normalizedCommunityName);
+  const isCommunityOwner = Boolean(profileId) && profileId === communityOwnerId;
   const postComposerDisabled =
     !isJoined || postTitle.trim().length === 0 || postContent.trim().length === 0;
 
@@ -229,6 +248,7 @@ export default function CommunityPage() {
       id: post.id,
       title: post.title,
       content: post.content,
+      imageUrls: post.imageUrls,
       tags: post.tags,
       createdAt: post.createdAt,
     }));
@@ -262,6 +282,7 @@ export default function CommunityPage() {
       body: JSON.stringify({
         title: postTitle.trim(),
         content: postContent.trim(),
+        imageUrls: postImageUrls,
         communities: [communityName.toLowerCase()],
       }),
     });
@@ -274,6 +295,7 @@ export default function CommunityPage() {
       id: string;
       title: string;
       content: string;
+      imageUrls?: string[];
       communities?: string[];
       tags?: string[];
       moderationStatus?: string;
@@ -293,6 +315,7 @@ export default function CommunityPage() {
     if (created.moderationStatus === "pending") {
       setPostTitle("");
       setPostContent("");
+      setPostImageUrls([]);
       setPostTags([]);
       showToast("Post submitted for admin approval.", "info");
       return;
@@ -302,6 +325,7 @@ export default function CommunityPage() {
       id: created.id,
       title: created.title,
       content: created.content,
+      imageUrls: Array.isArray(created.imageUrls) ? created.imageUrls : postImageUrls,
       communities: created.communities,
       tags: dedupeTagNames(postTags.length > 0 ? postTags : created.tags ?? []),
       createdAt: formatDisplayDate(created.createdAt),
@@ -312,6 +336,7 @@ export default function CommunityPage() {
     setAvailableTags((prev) => dedupeTagNames([...prev, ...postTags]));
     setPostTitle("");
     setPostContent("");
+    setPostImageUrls([]);
     setPostTags([]);
   };
 
@@ -399,14 +424,56 @@ export default function CommunityPage() {
 
       <div className="mx-auto w-full max-w-none space-y-4 px-6 py-8 sm:px-10 lg:px-16">
 
-        <Card className={`rounded-2xl border bg-white shadow-none dark:bg-slate-900 ${accent.section}`}>
-          <CardBody className="space-y-3 p-5">
-            <Typography variant="h3" className={accent.title}>
-              {communityName}
-            </Typography>
-            <Typography className="text-slate-700 dark:text-slate-200">
-              Community feed with authored posts.
-            </Typography>
+        <Card className={`overflow-hidden rounded-2xl border bg-white shadow-none dark:bg-slate-900 ${accent.section}`}>
+          <CardBody className="space-y-4 p-0">
+            <div className="relative">
+              {communityBannerImageUrl ? (
+                <img
+                  src={communityBannerImageUrl}
+                  alt={`${communityName} banner`}
+                  className="h-52 w-full object-cover sm:h-60"
+                  loading="lazy"
+                />
+              ) : (
+                <div className="h-52 w-full bg-linear-to-r from-slate-200 via-slate-100 to-slate-200 dark:from-slate-800 dark:via-slate-700 dark:to-slate-800 sm:h-60" />
+              )}
+
+              <div className="absolute inset-0 bg-linear-to-t from-slate-900/65 via-slate-900/20 to-transparent" />
+
+              <div className="absolute bottom-4 left-4 right-4 flex flex-wrap items-end justify-between gap-3">
+                <div className="min-w-0">
+                  <Typography variant="h3" className="text-white">
+                    {communityTitleImageUrl ? (
+                      <span className="inline-flex items-center gap-3">
+                        <img
+                          src={communityTitleImageUrl}
+                          alt={`${communityName} title`}
+                          className="h-11 w-11 rounded-lg border border-white/40 object-cover"
+                          loading="lazy"
+                        />
+                        <span className="truncate">{communityName}</span>
+                      </span>
+                    ) : (
+                      communityName
+                    )}
+                  </Typography>
+                  <Typography className="text-slate-200">
+                    Community feed with authored posts.
+                  </Typography>
+                </div>
+
+                {isCommunityOwner ? (
+                  <Link href={`/pages/community/${encodeURIComponent(normalizedCommunityName)}/settings`}>
+                    <Button size="sm" color={accent.color} className="inline-flex items-center gap-2 rounded-lg">
+                      <HiCog6Tooth className="h-4 w-4" />
+                      Edit Community Media
+                    </Button>
+                  </Link>
+                ) : null}
+              </div>
+            </div>
+
+            <div className="space-y-3 px-5 pb-5">
 
             {communityTags.length > 0 ? (
               <div className="flex flex-wrap gap-2 pt-2">
@@ -435,6 +502,7 @@ export default function CommunityPage() {
                 crossOrigin={undefined}
                 color={accent.color}
               />
+            </div>
             </div>
           </CardBody>
         </Card>
@@ -474,6 +542,10 @@ export default function CommunityPage() {
                   content={postContent}
                   onTitleChange={setPostTitle}
                   onContentChange={setPostContent}
+                  imageUrls={postImageUrls}
+                  onImageUrlsChange={setPostImageUrls}
+                  imageUploadScope="post"
+                  imageUploadDisabled={!isJoined}
                   onSubmit={handleCreatePost}
                   disabled={postComposerDisabled}
                   buttonLabel="Post to Community"
@@ -519,6 +591,11 @@ export default function CommunityPage() {
                     </Typography>
                   </div>
                   <Typography className="text-slate-800 dark:text-slate-200">{item.content}</Typography>
+                  <PostImageCarousel
+                    imageUrls={Array.isArray(item.imageUrls) ? item.imageUrls : []}
+                    title={item.title}
+                    heightClassName="h-48 sm:h-56"
+                  />
                   {Array.isArray(item.tags) && item.tags.length > 0 ? (
                     <div className="flex flex-wrap gap-2">
                       {item.tags.map((tag) => (

@@ -10,6 +10,7 @@ import { HiArrowLeft, HiChatBubbleBottomCenterText } from "react-icons/hi2";
 import AppNavbar from "@/app/_components/AppNavbar";
 import AppToast, { type AppToastTone } from "@/app/_components/AppToast";
 import CommentComposer from "@/app/_components/CommentComposer";
+import PostImageCarousel from "@/app/_components/PostImageCarousel";
 import { useTheme } from "@/app/_context/theme-context";
 import { isAuthenticated } from "@/app/_utils/auth";
 import { getThemeColorTokens } from "@/app/_utils/theme-colors";
@@ -19,6 +20,7 @@ type PostItem = {
   id: string | number;
   title: string;
   content: string;
+  imageUrls?: string[];
   communities?: string[];
   tags?: string[];
   createdAt: string;
@@ -27,6 +29,7 @@ type PostItem = {
 type CommentItem = {
   id: string;
   text: string;
+  imageUrls?: string[];
   createdAt: string;
   replies: CommentItem[];
 };
@@ -61,8 +64,13 @@ function CommentThread({ comments, depth = 0 }: CommentThreadProps) {
       {comments.map((comment) => (
         <div key={comment.id} style={{ marginLeft: `${depth * 16}px` }}>
           <Card className="border border-slate-200 shadow-none dark:border-slate-700 dark:bg-slate-900">
-            <CardBody className="space-y-1">
+            <CardBody className="space-y-2">
               <Typography className="text-slate-800 dark:text-slate-200">{comment.text}</Typography>
+              <PostImageCarousel
+                imageUrls={Array.isArray(comment.imageUrls) ? comment.imageUrls : []}
+                title="Comment"
+                heightClassName="h-44 sm:h-52"
+              />
               <Typography variant="small" className="text-slate-700 dark:text-slate-300">
                 {comment.createdAt}
               </Typography>
@@ -89,6 +97,7 @@ export default function PostDetailPage() {
   const [comments, setComments] = useState<CommentItem[]>([]);
   const [joinedCommunities, setJoinedCommunities] = useState<string[]>([]);
   const [commentText, setCommentText] = useState("");
+  const [commentImageUrls, setCommentImageUrls] = useState<string[]>([]);
   const [isHydrating, setIsHydrating] = useState(true);
   const [toast, setToast] = useState<{ open: boolean; message: string; tone: AppToastTone }>({
     open: false,
@@ -150,6 +159,7 @@ export default function PostDetailPage() {
             id: string;
             title: string;
             content: string;
+            imageUrls?: string[];
             communities?: string[];
             tags?: string[];
             createdAt: string;
@@ -159,6 +169,7 @@ export default function PostDetailPage() {
             id: parsedPost.id,
             title: parsedPost.title,
             content: parsedPost.content,
+            imageUrls: Array.isArray(parsedPost.imageUrls) ? parsedPost.imageUrls : [],
             communities: parsedPost.communities,
             tags: parsedPost.tags,
             createdAt: formatDisplayDate(parsedPost.createdAt),
@@ -171,6 +182,7 @@ export default function PostDetailPage() {
           const parsedComments = (await commentsRes.json()) as Array<{
             id: string;
             text: string;
+            imageUrls?: string[];
             createdAt: string;
           }>;
 
@@ -179,6 +191,7 @@ export default function PostDetailPage() {
               ? parsedComments.map((comment) => ({
                   id: comment.id,
                   text: comment.text,
+                  imageUrls: Array.isArray(comment.imageUrls) ? comment.imageUrls : [],
                   createdAt: formatDisplayDate(comment.createdAt),
                   replies: [],
                 }))
@@ -247,14 +260,14 @@ export default function PostDetailPage() {
     if (!canComment) return;
 
     const text = commentText.trim();
-    if (!text) return;
+    if (!text && commentImageUrls.length === 0) return;
 
     const response = await fetch(`/api/posts/${encodeURIComponent(postId)}/comments`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ text }),
+      body: JSON.stringify({ text, imageUrls: commentImageUrls }),
     });
 
     if (!response.ok) {
@@ -264,12 +277,14 @@ export default function PostDetailPage() {
     const created = (await response.json()) as {
       id: string;
       text: string;
+      imageUrls?: string[];
       moderationStatus?: string;
       createdAt: string;
     };
 
     if (created.moderationStatus === "pending") {
       setCommentText("");
+      setCommentImageUrls([]);
       showToast("Comment submitted for admin approval.", "info");
       return;
     }
@@ -277,12 +292,14 @@ export default function PostDetailPage() {
     const nextComment = {
       id: created.id,
       text: created.text,
+      imageUrls: Array.isArray(created.imageUrls) ? created.imageUrls : commentImageUrls,
       createdAt: formatDisplayDate(created.createdAt),
       replies: [],
     };
 
     setComments((prev) => [nextComment, ...prev]);
     setCommentText("");
+    setCommentImageUrls([]);
   };
 
   const handleJoinForComments = async () => {
@@ -407,6 +424,12 @@ export default function PostDetailPage() {
             ) : null}
 
             <Typography className="leading-8 text-slate-800 dark:text-slate-200">{post.content}</Typography>
+
+            <PostImageCarousel
+              imageUrls={Array.isArray(post.imageUrls) ? post.imageUrls : []}
+              title={post.title}
+              heightClassName="h-56 sm:h-72"
+            />
           </CardBody>
         </Card>
 
@@ -420,9 +443,11 @@ export default function PostDetailPage() {
             <CommentComposer
               commentText={commentText}
               onCommentTextChange={setCommentText}
+              imageUrls={commentImageUrls}
+              onImageUrlsChange={setCommentImageUrls}
               onSubmit={handleAddComment}
               canComment={canComment}
-              submitDisabled={commentText.trim().length === 0}
+              submitDisabled={commentText.trim().length === 0 && commentImageUrls.length === 0}
               joinPrompt="Join one of this post's communities to comment."
               joinButtonLabel={
                 communityToJoinForComments

@@ -18,6 +18,10 @@ const postSchema = new Schema(
       minlength: 1,
       maxlength: 10000,
     },
+    imageUrls: {
+      type: [String],
+      default: [],
+    },
     communities: {
       type: [{ type: Schema.Types.ObjectId, ref: "Community" }],
       default: [],
@@ -78,6 +82,7 @@ export type PostDocument = InferSchemaType<typeof postSchema>;
 if (
   models.Post &&
   (!models.Post.schema.path("tags") ||
+    !models.Post.schema.path("imageUrls") ||
     !models.Post.schema.path("__v") ||
     !models.Post.schema.path("moderationStatus") ||
     !models.Post.schema.path("recordStatus"))

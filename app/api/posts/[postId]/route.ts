@@ -6,6 +6,7 @@ import { PostModel } from "@/app/_lib/models/Post";
 import { CommunityModel } from "@/app/_lib/models/Community";
 import { TagModel } from "@/app/_lib/models/Tag";
 import { getSessionActor } from "@/app/_lib/admin";
+import { sanitizeScopedUploadUrls } from "@/app/_lib/upload-url";
 import {
   getApiErrorMessage,
   getOrCreateRequestId,
@@ -145,6 +146,7 @@ export async function GET(_request: Request, { params }: ParamsContext) {
       id: String(post._id),
       title: post.title,
       content: post.content,
+      imageUrls: sanitizeScopedUploadUrls(post.imageUrls, "post"),
       communities: resolveRefNames(post.communities as JoinedCommunityValue[] | undefined, communityNameById),
       tags: resolveRefNames(post.tags as JoinedTagValue[] | undefined, tagNameById),
       createdBy: post.createdBy ? String(post.createdBy) : "",

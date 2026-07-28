@@ -6,6 +6,7 @@ import { PostModel } from "@/app/_lib/models/Post";
 import { UserProfileModel } from "@/app/_lib/models/UserProfile";
 import { getSessionActor } from "@/app/_lib/admin";
 import { checkRateLimit } from "@/app/_lib/rate-limit";
+import { sanitizeScopedUploadUrls } from "@/app/_lib/upload-url";
 import {
   getApiErrorMessage,
   getOrCreateRequestId,
@@ -82,6 +83,7 @@ export async function GET(_request: Request, { params }: ParamsContext) {
         id: String(comment._id),
         postId: String(comment.targetId),
         text: comment.text,
+        imageUrls: sanitizeScopedUploadUrls(comment.imageUrls, "comment"),
         createdBy: comment.createdBy ? String(comment.createdBy) : "",
         lastUpdatedBy: comment.lastUpdatedBy ? String(comment.lastUpdatedBy) : "",
         moderationStatus: comment.moderationStatus ?? "approved",
@@ -180,12 +182,14 @@ export async function POST(request: Request, { params }: ParamsContext) {
     const payload = (await request.json()) as {
       text?: string;
       parentCommentId?: string | null;
+      imageUrls?: string[];
     };
 
     const text = payload?.text?.trim() ?? "";
-    if (!text) {
+    const imageUrls = sanitizeScopedUploadUrls(payload?.imageUrls, "comment");
+    if (!text && imageUrls.length === 0) {
       return NextResponse.json(
-        { error: "Comment text is required.", requestId },
+        { error: "Comment text or at least one image is required.", requestId },
         {
           status: 400,
           headers: {
@@ -215,6 +219,7 @@ export async function POST(request: Request, { params }: ParamsContext) {
       targetType: "Post",
       targetId: postId,
       text,
+      imageUrls,
       parentCommentId,
       createdBy: actorProfileId,
       lastUpdatedBy: actorProfileId,
@@ -229,6 +234,7 @@ export async function POST(request: Request, { params }: ParamsContext) {
         id: String(created._id),
         postId: String(created.targetId),
         text: created.text,
+        imageUrls: sanitizeScopedUploadUrls(created.imageUrls ?? imageUrls, "comment"),
         createdBy: created.createdBy ? String(created.createdBy) : "",
         lastUpdatedBy: created.lastUpdatedBy ? String(created.lastUpdatedBy) : "",
         moderationStatus: created.moderationStatus ?? moderationStatus,

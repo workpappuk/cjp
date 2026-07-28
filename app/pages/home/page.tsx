@@ -17,6 +17,7 @@ import { Button, Card, CardBody, Chip, Input, Spinner, Typography } from "@/app/
 import { useTheme } from "@/app/_context/theme-context";
 import AppNavbar from "@/app/_components/AppNavbar";
 import AppToast, { type AppToastTone } from "@/app/_components/AppToast";
+import PostImageCarousel from "@/app/_components/PostImageCarousel";
 import TagsPicker from "@/app/_components/TagsPicker";
 import { isAuthenticated } from "@/app/_utils/auth";
 import { getThemeColorTokens } from "@/app/_utils/theme-colors";
@@ -29,6 +30,7 @@ type PostItem = {
   id: string | number;
   title: string;
   content: string;
+  imageUrls?: string[];
   communities?: string[];
   tags?: string[];
   createdAt: string;
@@ -205,6 +207,7 @@ export default function HomePage() {
             id: string;
             title: string;
             content: string;
+            imageUrls?: string[];
             communities?: string[];
             tags?: string[];
             createdAt: string;
@@ -216,6 +219,7 @@ export default function HomePage() {
                   id: post.id,
                   title: post.title,
                   content: post.content,
+                  imageUrls: Array.isArray(post.imageUrls) ? post.imageUrls : [],
                   communities: post.communities,
                   tags: post.tags,
                   createdAt: formatDisplayDate(post.createdAt),
@@ -829,6 +833,12 @@ export default function HomePage() {
                                   <Typography className="leading-7 text-slate-800 dark:text-slate-200">
                                     {post.content}
                                   </Typography>
+
+                                  <PostImageCarousel
+                                    imageUrls={Array.isArray(post.imageUrls) ? post.imageUrls : []}
+                                    title={post.title}
+                                    heightClassName="h-48 sm:h-56"
+                                  />
 
                                   <div className="flex flex-wrap items-center gap-2 border-t border-slate-200 pt-3 dark:border-slate-700">
                                     <Link href={`/pages/post/${encodeURIComponent(String(post.id))}`}>

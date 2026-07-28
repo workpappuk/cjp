@@ -7,6 +7,7 @@ import { useSession } from "next-auth/react";
 import { Button, Card, CardBody, Chip, Spinner, Typography } from "@/app/_types/mtw";
 import AppNavbar from "@/app/_components/AppNavbar";
 import AppToast, { type AppToastTone } from "@/app/_components/AppToast";
+import PostImageCarousel from "@/app/_components/PostImageCarousel";
 import { useTheme } from "@/app/_context/theme-context";
 import { isAuthenticated } from "@/app/_utils/auth";
 import { getThemeColorTokens } from "@/app/_utils/theme-colors";
@@ -38,6 +39,7 @@ type ModerationComment = {
   targetType: string;
   targetId: string;
   text: string;
+  imageUrls?: string[];
   moderationStatus: ModerationStatus;
   recordStatus: RecordStatus;
   createdAt: string;
@@ -72,6 +74,23 @@ type QueueFetchOptions = {
   recordFilter: RecordStatus | "all";
   cursor?: string | null;
   append?: boolean;
+};
+
+type UploadScope = "post" | "community" | "comment";
+
+type UploadCleanupResponse = {
+  dryRun: boolean;
+  maxDelete: number;
+  scope: UploadScope | "all";
+  deletedTotal: number;
+  results: Array<{
+    scope: UploadScope;
+    totalStored: number;
+    totalReferenced: number;
+    orphanedCount: number;
+    deletedCount: number;
+    sampleOrphans: string[];
+  }>;
 };
 
 const PAGE_SIZE = 50;
@@ -143,6 +162,9 @@ export default function AdminModerationPage() {
   const [postQueue, setPostQueue] = useState<QueueState<ModerationPost>>(defaultQueueState);
   const [communityQueue, setCommunityQueue] = useState<QueueState<ModerationCommunity>>(defaultQueueState);
   const [commentQueue, setCommentQueue] = useState<QueueState<ModerationComment>>(defaultQueueState);
+  const [expandedCommentMediaIds, setExpandedCommentMediaIds] = useState<string[]>([]);
+  const [isRunningUploadCleanup, setIsRunningUploadCleanup] = useState(false);
+  const [cleanupSummary, setCleanupSummary] = useState<UploadCleanupResponse | null>(null);
 
   const pendingTotal = useMemo(() => {
     return summary?.pending.total ?? 0;
@@ -447,6 +469,50 @@ export default function AdminModerationPage() {
     });
   };
 
+  const runUploadsCleanup = async ({ dryRun }: { dryRun: boolean }) => {
+    setIsRunningUploadCleanup(true);
+
+    try {
+      const response = await fetch("/api/admin/uploads/cleanup", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          scope: "all",
+          dryRun,
+          maxDelete: 1000,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Cleanup request failed");
+      }
+
+      const payload = (await response.json()) as UploadCleanupResponse;
+      setCleanupSummary(payload);
+
+      if (payload.dryRun) {
+        const totalOrphans = payload.results.reduce((sum, item) => sum + item.orphanedCount, 0);
+        showToast(`Dry run complete. Found ${totalOrphans} orphaned uploads.`, "info");
+      } else {
+        showToast(`Cleanup complete. Deleted ${payload.deletedTotal} orphaned uploads.`, "success");
+      }
+    } catch {
+      showToast("Failed to run uploads cleanup.", "error");
+    } finally {
+      setIsRunningUploadCleanup(false);
+    }
+  };
+
+  const toggleCommentMedia = (commentId: string) => {
+    setExpandedCommentMediaIds((prev) =>
+      prev.includes(commentId)
+        ? prev.filter((id) => id !== commentId)
+        : [...prev, commentId],
+    );
+  };
+
   if (status === "loading" || isCheckingAdmin) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
@@ -522,6 +588,80 @@ export default function AdminModerationPage() {
                 <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200">
                   <Spinner className="h-4 w-4" />
                   <Typography>Loading summary...</Typography>
+                </div>
+              ) : null}
+            </CardBody>
+          </Card>
+
+          <Card className="border border-slate-200 bg-white shadow-none dark:border-slate-700 dark:bg-slate-900">
+            <CardBody className="space-y-4 p-5">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <Typography variant="h5" className="text-blue-gray-900 dark:text-slate-100">Uploads Cleanup</Typography>
+                  <Typography className="text-sm text-slate-700 dark:text-slate-300">
+                    Find and remove orphaned image uploads that are no longer referenced.
+                  </Typography>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    variant="outlined"
+                    color="blue-gray"
+                    onClick={() => void runUploadsCleanup({ dryRun: true })}
+                    disabled={isRunningUploadCleanup}
+                  >
+                    {isRunningUploadCleanup ? "Running..." : "Dry Run"}
+                  </Button>
+                  <Button
+                    size="sm"
+                    color="red"
+                    onClick={() => void runUploadsCleanup({ dryRun: false })}
+                    disabled={isRunningUploadCleanup}
+                  >
+                    {isRunningUploadCleanup ? "Running..." : "Delete Orphans"}
+                  </Button>
+                </div>
+              </div>
+
+              {cleanupSummary ? (
+                <div className="space-y-3 rounded-xl border border-slate-200 p-3 dark:border-slate-700">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Chip
+                      value={cleanupSummary.dryRun ? "Dry Run" : "Delete Mode"}
+                      size="sm"
+                      variant="ghost"
+                      color={cleanupSummary.dryRun ? "blue-gray" : "red"}
+                      className="rounded-full"
+                    />
+                    <Chip
+                      value={`Deleted: ${cleanupSummary.deletedTotal}`}
+                      size="sm"
+                      variant="ghost"
+                      color={cleanupSummary.deletedTotal > 0 ? "green" : "blue-gray"}
+                      className="rounded-full"
+                    />
+                    <Chip
+                      value={`Max Delete: ${cleanupSummary.maxDelete}`}
+                      size="sm"
+                      variant="ghost"
+                      color="blue-gray"
+                      className="rounded-full"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    {cleanupSummary.results.map((result) => (
+                      <div key={result.scope} className="rounded-lg border border-slate-200 p-3 dark:border-slate-700">
+                        <Typography className="font-medium text-slate-800 dark:text-slate-100">
+                          {result.scope}
+                        </Typography>
+                        <Typography variant="small" className="text-slate-700 dark:text-slate-300">
+                          Stored: {result.totalStored} | Referenced: {result.totalReferenced} | Orphaned: {result.orphanedCount} | Deleted: {result.deletedCount}
+                        </Typography>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ) : null}
             </CardBody>
@@ -782,6 +922,36 @@ export default function AdminModerationPage() {
                   <div key={comment.id} className="rounded-xl border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-800/70">
                     <Typography className="text-sm text-slate-700 dark:text-slate-200">{comment.targetType} • {comment.targetId}</Typography>
                     <Typography className="font-medium text-blue-gray-900 dark:text-slate-100">{comment.text}</Typography>
+                    {Array.isArray(comment.imageUrls) && comment.imageUrls.length > 0 ? (
+                      <div className="space-y-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Chip
+                            value={`${comment.imageUrls.length} media`}
+                            size="sm"
+                            variant="ghost"
+                            color="blue-gray"
+                            className="rounded-full"
+                          />
+                          <Button
+                            size="sm"
+                            variant="text"
+                            color="blue-gray"
+                            className="rounded-lg"
+                            onClick={() => toggleCommentMedia(comment.id)}
+                          >
+                            {expandedCommentMediaIds.includes(comment.id) ? "Hide media" : "Show media"}
+                          </Button>
+                        </div>
+
+                        {expandedCommentMediaIds.includes(comment.id) ? (
+                          <PostImageCarousel
+                            imageUrls={comment.imageUrls}
+                            title="Comment media"
+                            heightClassName="h-44 sm:h-52"
+                          />
+                        ) : null}
+                      </div>
+                    ) : null}
                     <Typography className="pt-1 text-xs text-slate-700 dark:text-slate-300">{formatDisplayDate(comment.createdAt)}</Typography>
                     <div className="mt-2 flex flex-wrap gap-2">
                       <Chip

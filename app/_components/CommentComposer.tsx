@@ -2,6 +2,7 @@
 
 import type { ChangeEvent, FormEvent } from "react";
 import { Button, Input, Typography } from "@/app/_types/mtw";
+import ImageUploadField from "@/app/_components/ImageUploadField";
 
 type CommentComposerProps = {
   commentText: string;
@@ -13,6 +14,9 @@ type CommentComposerProps = {
   joinButtonLabel?: string;
   onJoin?: () => void;
   color?: string;
+  imageUrls?: string[];
+  onImageUrlsChange?: (next: string[]) => void;
+  imageUploadDisabled?: boolean;
 };
 
 function getPromptClasses(color: string) {
@@ -37,6 +41,9 @@ export default function CommentComposer({
   joinButtonLabel,
   onJoin,
   color = "blue",
+  imageUrls = [],
+  onImageUrlsChange,
+  imageUploadDisabled = false,
 }: CommentComposerProps) {
   const promptClasses = getPromptClasses(color);
 
@@ -52,6 +59,19 @@ export default function CommentComposer({
         color={color}
         disabled={!canComment}
       />
+
+      {onImageUrlsChange ? (
+        <ImageUploadField
+          value={imageUrls}
+          onChange={onImageUrlsChange}
+          scope="comment"
+          maxImages={6}
+          color={color}
+          disabled={!canComment || imageUploadDisabled}
+          label="Comment images"
+          helperText="Attach images to your comment."
+        />
+      ) : null}
 
       {!canComment && joinPrompt ? (
         <div className={`space-y-2 rounded-xl border p-3 ${promptClasses}`}>
