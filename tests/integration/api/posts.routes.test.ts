@@ -139,6 +139,85 @@ describe("posts and comments routes", () => {
     expect(comments.some((comment) => comment.id === created.id)).toBe(true);
   });
 
+  it("POST and GET comments support imageUrls", async () => {
+    actorMock.mockResolvedValueOnce({
+      email: "admin@test.threadforge.dev",
+      isAdmin: true,
+      profileId: null,
+    });
+
+    const seedPost = await PostModel.findOne({ title: "Seed Post" }).lean();
+    expect(seedPost?._id).toBeTruthy();
+
+    const postId = String(seedPost?._id);
+    const createResponse = await createComment(
+      createMockRequest(`http://localhost/api/posts/${postId}/comments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: "",
+          imageUrls: [
+            "/uploads/comment/2026/07/comment-one.jpg",
+            "/uploads/comment/2026/07/comment-two.jpg",
+            "/uploads/post/2026/07/not-allowed.jpg",
+          ],
+        }),
+      }),
+      { params: Promise.resolve({ postId }) },
+    );
+
+    expect(createResponse.status).toBe(201);
+    const created = (await createResponse.json()) as { id: string; imageUrls?: string[] };
+    expect(Array.isArray(created.imageUrls)).toBe(true);
+    expect(created.imageUrls).toEqual([
+      "/uploads/comment/2026/07/comment-one.jpg",
+      "/uploads/comment/2026/07/comment-two.jpg",
+    ]);
+
+    const persisted = await CommentModel.findById(created.id).lean();
+    expect(persisted?.imageUrls).toEqual([
+      "/uploads/comment/2026/07/comment-one.jpg",
+      "/uploads/comment/2026/07/comment-two.jpg",
+    ]);
+
+    const getResponse = await getComments(
+      createMockRequest(`http://localhost/api/posts/${postId}/comments`),
+      { params: Promise.resolve({ postId }) },
+    );
+
+    expect(getResponse.status).toBe(200);
+    const comments = (await getResponse.json()) as Array<{
+      id: string;
+      imageUrls?: string[];
+    }>;
+
+    const found = comments.find((comment) => comment.id === created.id);
+    expect(found?.imageUrls).toEqual([
+      "/uploads/comment/2026/07/comment-one.jpg",
+      "/uploads/comment/2026/07/comment-two.jpg",
+    ]);
+  });
+
+  it("POST comment rejects when both text and imageUrls are empty", async () => {
+    const seedPost = await PostModel.findOne({ title: "Seed Post" }).lean();
+    expect(seedPost?._id).toBeTruthy();
+
+    const postId = String(seedPost?._id);
+    const createResponse = await createComment(
+      createMockRequest(`http://localhost/api/posts/${postId}/comments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: "   ",
+          imageUrls: ["/uploads/post/2026/07/not-allowed.jpg"],
+        }),
+      }),
+      { params: Promise.resolve({ postId }) },
+    );
+
+    expect(createResponse.status).toBe(400);
+  });
+
   it("comment route rejects invalid post id", async () => {
     const invalidId = new Types.ObjectId().toString().slice(0, 10);
     const response = await getComments(

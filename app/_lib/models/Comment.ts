@@ -18,9 +18,8 @@ const commentSchema = new Schema(
     },
     text: {
       type: String,
-      required: true,
+      default: "",
       trim: true,
-      minlength: 1,
       maxlength: 5000,
     },
     imageUrls: {
@@ -74,6 +73,24 @@ const commentSchema = new Schema(
 commentSchema.index({ targetType: 1, targetId: 1, createdAt: -1 });
 commentSchema.index({ moderationStatus: 1, createdAt: -1 });
 commentSchema.index({ recordStatus: 1, createdAt: -1 });
+
+commentSchema.pre("validate", function () {
+  const rawText = typeof this.text === "string" ? this.text.trim() : "";
+  const hasText = rawText.length > 0;
+
+  const hasImages = Array.isArray(this.imageUrls)
+    ? this.imageUrls.some((value) => typeof value === "string" && value.trim().length > 0)
+    : false;
+
+  if (!hasText && !hasImages) {
+    this.invalidate("text", "Comment text or at least one image is required.");
+  }
+
+  if (!hasText) {
+    this.text = "";
+  }
+});
+
 commentSchema.plugin(applyModelDeltaAuditPlugin, { source: "comments" });
 
 export type CommentDocument = InferSchemaType<typeof commentSchema>;
