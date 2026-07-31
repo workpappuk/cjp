@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -20,8 +20,8 @@ import {
 import AppNavbar from "@/app/_components/AppNavbar";
 import AppToast, { type AppToastTone } from "@/app/_components/AppToast";
 import { useTheme } from "@/app/_context/theme-context";
-import { isAuthenticated } from "@/app/_utils/auth";
 import { getThemeColorTokens } from "@/app/_utils/theme-colors";
+import { useSignInRedirect } from "@/app/_utils/use-sign-in-redirect";
 
 type AuditModelName = "Post" | "Community" | "Comment" | "Tag" | "UserProfile";
 type AuditOperation = "all" | "create" | "update";
@@ -154,17 +154,22 @@ export default function AdminAuditPage() {
   const [auditOperation, setAuditOperation] = useState<AuditOperation>("all");
   const [auditQueue, setAuditQueue] = useState<AuditQueueState>(defaultAuditQueueState);
 
-  const showToast = (message: string, tone: AppToastTone = "info") => {
+  const showToast = useCallback((message: string, tone: AppToastTone = "info") => {
     setToast({ open: true, message, tone });
-  };
+  }, []);
+
+  const { requiresSignIn, promptSignIn } = useSignInRedirect({
+    status,
+    onBeforeRedirect: (reason) => showToast(reason, "info"),
+  });
 
   useEffect(() => {
     if (status === "loading") {
       return;
     }
 
-    if (status === "unauthenticated" && !isAuthenticated()) {
-      router.replace("/");
+    if (requiresSignIn) {
+      promptSignIn("Sign in to access the admin audit log.");
       return;
     }
 
@@ -209,7 +214,7 @@ export default function AdminAuditPage() {
     return () => {
       isMounted = false;
     };
-  }, [router, status]);
+  }, [promptSignIn, requiresSignIn, router, status]);
 
   const fetchAudit = async (
     options?: {

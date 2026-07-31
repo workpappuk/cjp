@@ -102,6 +102,20 @@ describe("communities route", () => {
     expect(response.status).toBe(400);
   });
 
+  it("POST returns 401 when actor is unauthenticated", async () => {
+    actorMock.mockResolvedValueOnce(null);
+
+    const response = await createCommunity(
+      createMockRequest("http://localhost/api/communities", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "guests-blocked" }),
+      }),
+    );
+
+    expect(response.status).toBe(401);
+  });
+
   it("POST returns conflict when community already exists", async () => {
     const response = await createCommunity(
       createMockRequest("http://localhost/api/communities", {

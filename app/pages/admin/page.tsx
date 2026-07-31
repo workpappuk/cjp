@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -8,8 +8,8 @@ import { Card, CardBody, Spinner, Typography } from "@/app/_types/mtw";
 import AppNavbar from "@/app/_components/AppNavbar";
 import AppToast, { type AppToastTone } from "@/app/_components/AppToast";
 import { useTheme } from "@/app/_context/theme-context";
-import { isAuthenticated } from "@/app/_utils/auth";
 import { getThemeColorTokens } from "@/app/_utils/theme-colors";
+import { useSignInRedirect } from "@/app/_utils/use-sign-in-redirect";
 
 export default function AdminDashboardPage() {
   const { status } = useSession();
@@ -25,17 +25,22 @@ export default function AdminDashboardPage() {
     tone: "info",
   });
 
-  const showToast = (message: string, tone: AppToastTone = "info") => {
+  const showToast = useCallback((message: string, tone: AppToastTone = "info") => {
     setToast({ open: true, message, tone });
-  };
+  }, []);
+
+  const { requiresSignIn, promptSignIn } = useSignInRedirect({
+    status,
+    onBeforeRedirect: (reason) => showToast(reason, "info"),
+  });
 
   useEffect(() => {
     if (status === "loading") {
       return;
     }
 
-    if (status === "unauthenticated" && !isAuthenticated()) {
-      router.replace("/");
+    if (requiresSignIn) {
+      promptSignIn("Sign in to access the admin dashboard.");
       return;
     }
 
@@ -80,7 +85,7 @@ export default function AdminDashboardPage() {
     return () => {
       isMounted = false;
     };
-  }, [router, status]);
+  }, [promptSignIn, requiresSignIn, router, status]);
 
   if (status === "loading" || isCheckingAdmin) {
     return (

@@ -2,7 +2,6 @@
 
 import type { ChangeEvent, FormEvent } from "react";
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { useVirtualizer } from "@tanstack/react-virtual";
@@ -19,10 +18,10 @@ import AppNavbar from "@/app/_components/AppNavbar";
 import AppToast, { type AppToastTone } from "@/app/_components/AppToast";
 import PostImageCarousel from "@/app/_components/PostImageCarousel";
 import TagsPicker from "@/app/_components/TagsPicker";
-import { isAuthenticated } from "@/app/_utils/auth";
 import { getThemeColorTokens } from "@/app/_utils/theme-colors";
 import { attachTagsToTarget, dedupeTagNames } from "@/app/_utils/tags";
 import { updateJoinedCommunitiesWithConflictRetry } from "@/app/_utils/api";
+import { useSignInRedirect } from "@/app/_utils/use-sign-in-redirect";
 
 const HOME_UI_PREFS_KEY = "threadforge-home-ui-prefs";
 
@@ -47,7 +46,6 @@ function formatDisplayDate(input: string | Date) {
 }
 
 export default function HomePage() {
-  const router = useRouter();
   const { status } = useSession();
   const { theme } = useTheme();
   const [posts, setPosts] = useState<PostItem[]>([]);
@@ -74,6 +72,11 @@ export default function HomePage() {
   const showToast = (message: string, tone: AppToastTone = "info") => {
     setToast({ open: true, message, tone });
   };
+
+  const { requiresSignIn, promptSignIn } = useSignInRedirect({
+    status,
+    onBeforeRedirect: (reason) => showToast(reason, "info"),
+  });
 
   const persistJoinedCommunities = async (nextJoined: string[]) => {
     return updateJoinedCommunitiesWithConflictRetry({
@@ -179,11 +182,6 @@ export default function HomePage() {
 
   useEffect(() => {
     if (status === "loading") {
-      return;
-    }
-
-    if (status === "unauthenticated" && !isAuthenticated()) {
-      router.replace("/");
       return;
     }
 
@@ -318,7 +316,7 @@ export default function HomePage() {
     return () => {
       isMounted = false;
     };
-  }, [router, status]);
+  }, [status]);
 
   useEffect(() => {
     window.localStorage.setItem(
@@ -333,6 +331,11 @@ export default function HomePage() {
   const handleCreateCommunity = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (communityDisabled) return;
+
+    if (requiresSignIn) {
+      promptSignIn("Sign in to create a community.");
+      return;
+    }
 
     const nextName = normalizedCommunityName;
     const exists = communities.some(
@@ -410,6 +413,11 @@ export default function HomePage() {
   };
 
   const handleToggleJoinCommunity = async (name: string) => {
+    if (requiresSignIn) {
+      promptSignIn("Sign in to join communities.");
+      return;
+    }
+
     const normalizedName = name.toLowerCase();
     const isJoined = joinedCommunitiesSet.has(normalizedName);
     if (isJoined) {

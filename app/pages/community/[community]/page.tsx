@@ -3,7 +3,7 @@
 import type { ChangeEvent, FormEvent } from "react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Button, Card, CardBody, Chip, Input, Spinner, Typography } from "@/app/_types/mtw";
 import { HiArrowLeft, HiCheckCircle, HiCog6Tooth, HiUserPlus } from "react-icons/hi2";
@@ -13,10 +13,10 @@ import PostImageCarousel from "@/app/_components/PostImageCarousel";
 import PostComposer from "@/app/_components/PostComposer";
 import TagsPicker from "@/app/_components/TagsPicker";
 import { useTheme } from "@/app/_context/theme-context";
-import { isAuthenticated } from "@/app/_utils/auth";
 import { getThemeColorTokens } from "@/app/_utils/theme-colors";
 import { attachTagsToTarget, dedupeTagNames } from "@/app/_utils/tags";
 import { updateJoinedCommunitiesWithConflictRetry } from "@/app/_utils/api";
+import { useSignInRedirect } from "@/app/_utils/use-sign-in-redirect";
 
 const INITIAL_FEED_RENDER_COUNT = 30;
 const FEED_LOAD_STEP = 30;
@@ -51,7 +51,6 @@ function formatDisplayDate(input: string | Date) {
 }
 
 export default function CommunityPage() {
-  const router = useRouter();
   const { status } = useSession();
   const { theme } = useTheme();
   const params = useParams();
@@ -88,6 +87,11 @@ export default function CommunityPage() {
     setToast({ open: true, message, tone });
   };
 
+  const { requiresSignIn, promptSignIn } = useSignInRedirect({
+    status,
+    onBeforeRedirect: (reason) => showToast(reason, "info"),
+  });
+
   const persistJoinedCommunities = async (
     nextJoined: string[],
     mergeOnConflict?: (latest: string[], intended: string[]) => string[],
@@ -113,11 +117,6 @@ export default function CommunityPage() {
 
   useEffect(() => {
     if (status === "loading") {
-      return;
-    }
-
-    if (status === "unauthenticated" && !isAuthenticated()) {
-      router.replace("/");
       return;
     }
 
@@ -227,7 +226,7 @@ export default function CommunityPage() {
     return () => {
       isMounted = false;
     };
-  }, [communityName, router, status]);
+  }, [communityName, status]);
 
   const authoredPosts = useMemo(() => {
     return posts.filter(
@@ -272,6 +271,12 @@ export default function CommunityPage() {
 
   const handleCreatePost = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
+    if (requiresSignIn) {
+      promptSignIn("Sign in to create a post.");
+      return;
+    }
+
     if (!isJoined || postComposerDisabled) return;
 
     const response = await fetch("/api/posts", {
@@ -341,6 +346,11 @@ export default function CommunityPage() {
   };
 
   const handleJoinCommunity = async () => {
+    if (requiresSignIn) {
+      promptSignIn(`Sign in to join ${communityName}.`);
+      return;
+    }
+
     if (isJoined) return;
 
     const nextJoined = [...joinedCommunities, normalizedCommunityName];
@@ -362,6 +372,11 @@ export default function CommunityPage() {
   };
 
   const handleLeaveCommunity = async () => {
+    if (requiresSignIn) {
+      promptSignIn("Sign in to manage joined communities.");
+      return;
+    }
+
     if (!isJoined) return;
 
     const nextJoined = joinedCommunities.filter((item) => item !== normalizedCommunityName);
@@ -512,11 +527,15 @@ export default function CommunityPage() {
             {!isJoined ? (
               <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 dark:border-blue-800/80 dark:bg-blue-900/20">
                 <Typography variant="small" className="text-blue-gray-800 dark:text-slate-200">
-                  You need to join {communityName} before posting.
+                  {requiresSignIn
+                    ? `Sign in to join ${communityName} and create posts.`
+                    : `You need to join ${communityName} before posting.`}
                 </Typography>
                 <div className="pt-2">
                   <Button size="sm" color={accent.color} onClick={handleJoinCommunity}>
-                    Join Community
+                    {requiresSignIn
+                      ? "Sign in to join"
+                      : "Join Community"}
                   </Button>
                 </div>
               </div>

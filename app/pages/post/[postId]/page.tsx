@@ -3,7 +3,7 @@
 import type { FormEvent } from "react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Card, CardBody, Chip, Spinner, Typography } from "@/app/_types/mtw";
 import { HiArrowLeft, HiChatBubbleBottomCenterText } from "react-icons/hi2";
@@ -12,9 +12,9 @@ import AppToast, { type AppToastTone } from "@/app/_components/AppToast";
 import CommentComposer from "@/app/_components/CommentComposer";
 import PostImageCarousel from "@/app/_components/PostImageCarousel";
 import { useTheme } from "@/app/_context/theme-context";
-import { isAuthenticated } from "@/app/_utils/auth";
 import { getThemeColorTokens } from "@/app/_utils/theme-colors";
 import { updateJoinedCommunitiesWithConflictRetry } from "@/app/_utils/api";
+import { useSignInRedirect } from "@/app/_utils/use-sign-in-redirect";
 
 type PostItem = {
   id: string | number;
@@ -89,7 +89,6 @@ function CommentThread({ comments, depth = 0 }: CommentThreadProps) {
 }
 
 export default function PostDetailPage() {
-  const router = useRouter();
   const { status } = useSession();
   const { theme } = useTheme();
   const params = useParams();
@@ -125,6 +124,11 @@ export default function PostDetailPage() {
     setToast({ open: true, message, tone });
   };
 
+  const { requiresSignIn, promptSignIn } = useSignInRedirect({
+    status,
+    onBeforeRedirect: (reason) => showToast(reason, "info"),
+  });
+
   const postId = useMemo(() => {
     const raw = Array.isArray(params.postId) ? params.postId[0] : params.postId;
     return decodeURIComponent(raw || "");
@@ -132,11 +136,6 @@ export default function PostDetailPage() {
 
   useEffect(() => {
     if (status === "loading") {
-      return;
-    }
-
-    if (status === "unauthenticated" && !isAuthenticated()) {
-      router.replace("/");
       return;
     }
 
@@ -229,7 +228,7 @@ export default function PostDetailPage() {
     return () => {
       isMounted = false;
     };
-  }, [postId, router, status]);
+  }, [postId, status]);
 
   const totalCommentCount = useMemo(() => countComments(comments), [comments]);
 
@@ -257,6 +256,12 @@ export default function PostDetailPage() {
 
   const handleAddComment = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
+    if (requiresSignIn) {
+      promptSignIn("Sign in to add a comment.");
+      return;
+    }
+
     if (!canComment) return;
 
     const text = commentText.trim();
@@ -303,6 +308,11 @@ export default function PostDetailPage() {
   };
 
   const handleJoinForComments = async () => {
+    if (requiresSignIn) {
+      promptSignIn("Sign in to join communities and comment.");
+      return;
+    }
+
     const targetCommunity = communityToJoinForComments;
     if (!targetCommunity) return;
 
@@ -448,13 +458,25 @@ export default function PostDetailPage() {
               onSubmit={handleAddComment}
               canComment={canComment}
               submitDisabled={commentText.trim().length === 0 && commentImageUrls.length === 0}
-              joinPrompt="Join one of this post's communities to comment."
-              joinButtonLabel={
-                communityToJoinForComments
-                  ? `Join ${communityToJoinForComments}`
-                  : ""
+              joinPrompt={
+                requiresSignIn
+                  ? "Sign in to comment on this post."
+                  : "Join one of this post's communities to comment."
               }
-              onJoin={communityToJoinForComments ? handleJoinForComments : undefined}
+              joinButtonLabel={
+                requiresSignIn
+                  ? "Sign in"
+                  : communityToJoinForComments
+                    ? `Join ${communityToJoinForComments}`
+                    : ""
+              }
+              onJoin={
+                requiresSignIn
+                  ? () => promptSignIn("Sign in to comment on this post.")
+                  : communityToJoinForComments
+                    ? handleJoinForComments
+                    : undefined
+              }
               color={accent.color}
             />
 

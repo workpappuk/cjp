@@ -150,6 +150,18 @@ export async function POST(request: Request, { params }: ParamsContext) {
   try {
     await connectToDatabase();
     const actor = await getSessionActor();
+    if (!actor?.email) {
+      return NextResponse.json(
+        { error: "Unauthorized", requestId },
+        {
+          status: 401,
+          headers: {
+            "x-request-id": requestId,
+          },
+        },
+      );
+    }
+
     const actorEmail = actor?.email ?? "";
     const actorProfileId = await getCanonicalActorProfileId(actorEmail);
 

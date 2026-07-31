@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -9,8 +9,8 @@ import AppNavbar from "@/app/_components/AppNavbar";
 import AppToast, { type AppToastTone } from "@/app/_components/AppToast";
 import PostImageCarousel from "@/app/_components/PostImageCarousel";
 import { useTheme } from "@/app/_context/theme-context";
-import { isAuthenticated } from "@/app/_utils/auth";
 import { getThemeColorTokens } from "@/app/_utils/theme-colors";
+import { useSignInRedirect } from "@/app/_utils/use-sign-in-redirect";
 
 type ModerationStatus = "pending" | "approved" | "rejected";
 type RecordStatus = "active" | "deleted" | "archived" | "flagged";
@@ -170,9 +170,14 @@ export default function AdminModerationPage() {
     return summary?.pending.total ?? 0;
   }, [summary]);
 
-  const showToast = (message: string, tone: AppToastTone = "info") => {
+  const showToast = useCallback((message: string, tone: AppToastTone = "info") => {
     setToast({ open: true, message, tone });
-  };
+  }, []);
+
+  const { requiresSignIn, promptSignIn } = useSignInRedirect({
+    status,
+    onBeforeRedirect: (reason) => showToast(reason, "info"),
+  });
 
   const fetchSummary = async () => {
     const response = await fetch("/api/admin/moderation", { cache: "no-store" });
@@ -279,8 +284,8 @@ export default function AdminModerationPage() {
       return;
     }
 
-    if (status === "unauthenticated" && !isAuthenticated()) {
-      router.replace("/");
+    if (requiresSignIn) {
+      promptSignIn("Sign in to access admin moderation.");
       return;
     }
 
@@ -340,7 +345,7 @@ export default function AdminModerationPage() {
     return () => {
       isMounted = false;
     };
-  }, [router, status]);
+  }, [promptSignIn, requiresSignIn, router, status]);
 
   const moderate = async (
     targetType: TargetType,

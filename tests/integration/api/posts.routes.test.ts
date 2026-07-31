@@ -103,6 +103,24 @@ describe("posts and comments routes", () => {
     expect(response.status).toBe(400);
   });
 
+  it("POST returns 401 when actor is unauthenticated", async () => {
+    actorMock.mockResolvedValueOnce(null);
+
+    const response = await createPost(
+      createMockRequest("http://localhost/api/posts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: "Guest Post",
+          content: "Blocked",
+          communities: ["general"],
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(401);
+  });
+
   it("POST and GET comments persist and read data", async () => {
     actorMock.mockResolvedValueOnce({
       email: "admin@test.threadforge.dev",
@@ -226,5 +244,24 @@ describe("posts and comments routes", () => {
     );
 
     expect(response.status).toBe(400);
+  });
+
+  it("POST comment returns 401 when actor is unauthenticated", async () => {
+    actorMock.mockResolvedValueOnce(null);
+
+    const seedPost = await PostModel.findOne({ title: "Seed Post" }).lean();
+    expect(seedPost?._id).toBeTruthy();
+
+    const postId = String(seedPost?._id);
+    const response = await createComment(
+      createMockRequest(`http://localhost/api/posts/${postId}/comments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: "Guest comment" }),
+      }),
+      { params: Promise.resolve({ postId }) },
+    );
+
+    expect(response.status).toBe(401);
   });
 });
