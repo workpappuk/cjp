@@ -12,10 +12,9 @@ function isAdminToken(token: Record<string, unknown> | null) {
 }
 
 export async function proxy(request: NextRequest) {
-  const { pathname } = request.nextUrl;
-
   const correlationId = randomUUID(); // unique ID per request
   const { method, url, headers, nextUrl } = request;
+  const { pathname } = nextUrl;
 
   logger.info("🌐 Incoming request", {
     correlationId,
@@ -64,5 +63,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/testing/public/:path*", "/testing/protected/:path*"],
+  matcher: ["/testing/public/:path*", "/testing/protected/:path*", "/api/:path*"],
 };
