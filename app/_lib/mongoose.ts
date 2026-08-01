@@ -1,5 +1,6 @@
 import "server-only";
 import mongoose from "mongoose";
+import logger from "./logger";
 
 type MongooseGlobal = {
   conn: typeof mongoose | null;

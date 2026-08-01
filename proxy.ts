@@ -1,5 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
+import { randomUUID } from "crypto";
+import logger from "./app/_lib/logger";
 
 function isAdminToken(token: Record<string, unknown> | null) {
   if (!token) {
@@ -9,8 +11,24 @@ function isAdminToken(token: Record<string, unknown> | null) {
   return token.isAdmin === true || token.role === "admin";
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  const correlationId = randomUUID(); // unique ID per request
+  const { method, url, headers, nextUrl } = request;
+
+  logger.info("🌐 Incoming request", {
+    correlationId,
+    method,
+    url,
+    pathname: nextUrl.pathname,
+    query: nextUrl.searchParams.toString(),
+    userAgent: headers.get("user-agent"),
+    ip: headers.get("x-forwarded-for") || "unknown",
+    host: headers.get("host"),
+    contentType: headers.get("content-type"),
+  });
+
 
   if (pathname.startsWith("/testing/public")) {
     return NextResponse.next();
